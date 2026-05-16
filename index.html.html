@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>環境2課 中期経営計画ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+
+/* ── Header ── */
+.hdr{background:#fff;border-bottom:1px solid #e2e8f0;padding:9px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.07);gap:10px;flex-wrap:wrap}
+.hdr-left .hdr-title{font-size:15px;font-weight:700;color:#0f172a}
+.hdr-left .hdr-sub{font-size:11px;color:#64748b;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.badge{font-size:11px;padding:3px 9px;border-radius:20px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:600;white-space:nowrap}
+.today-badge{font-size:11px;padding:3px 9px;border-radius:20px;background:#fefce8;color:#854F0B;border:1px solid #fde68a;font-weight:600;white-space:nowrap}
+.nav-tabs{display:flex;gap:2px;background:#f1f5f9;border-radius:9px;padding:3px}
+.nav-tab{padding:5px 14px;font-size:12px;font-weight:600;border-radius:7px;border:none;background:transparent;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap}
+.nav-tab.active{background:#fff;color:#0f172a;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.section{display:none}.section.active{display:block}
+
+/* ── Layout ── */
+.main{max-width:1100px;margin:0 auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px}
+#topRow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── KPI ① ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:11px 14px;position:relative;overflow:hidden}
+.kpi.warn{border-color:#fcd34d;background:#fffbeb}
+.kpi.danger{border-color:#fca5a5;background:#fff5f5}
+.kpi.ok{border-color:#86efac;background:#f0fdf4}
+.kpi-label{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.kpi-val{font-size:23px;font-weight:700;line-height:1}
+.kpi-unit{font-size:12px;font-weight:400;color:#94a3b8;margin-left:3px}
+.kpi-sub{font-size:10px;color:#94a3b8;margin-top:3px}
+/* ① トレンド矢印 */
+.kpi-trend{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;width:fit-content}
+.kpi-trend.up-bad {background:#fee2e2;color:#dc2626}
+.kpi-trend.up-good{background:#dcfce7;color:#16a34a}
+.kpi-trend.dn-bad {background:#fee2e2;color:#dc2626}
+.kpi-trend.dn-good{background:#dcfce7;color:#16a34a}
+.kpi-trend.neutral{background:#f1f5f9;color:#64748b}
+
+/* ── Alert ── */
+.alert-panel{background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:0;overflow:hidden}
+.alert-header{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;cursor:pointer;user-select:none;gap:8px}
+.alert-header:hover{background:#f8fafc}
+.alert-title{font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px}
+.alert-chevron{font-size:11px;color:#94a3b8;transition:transform .2s;flex-shrink:0}
+.alert-chevron.open{transform:rotate(180deg)}
+.alert-body{display:none;padding:0 16px 12px}
+.alert-body.open{display:block}
+.alert-list{display:flex;flex-direction:column;gap:5px}
+.alert-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:7px;font-size:11px}
+.alert-item.danger{background:#fff5f5;border:1px solid #fca5a5;color:#991b1b}
+.alert-item.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+.alert-item.ok{background:#f0fdf4;border:1px solid #86efac;color:#166534;font-style:italic}
+
+/* ── Card ── */
+.card{background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:14px 16px}
+.card-title{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:2px}
+.card-sub{font-size:10px;color:#64748b;margin-bottom:10px}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+
+/* ── Legend ── */
+.legend{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#475569}
+.legend-line{width:16px;height:3px;border-radius:2px;display:inline-block}
+.legend-dash{width:16px;display:inline-block;border-top:2.5px dashed}
+.legend-sq{width:9px;height:9px;border-radius:2px;display:inline-block}
+.chart-wrap{position:relative;width:100%}
+
+/* ── Progress ── */
+.prog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9}
+.prog-item{border-radius:7px;padding:8px 10px;border:1px solid transparent}
+.prog-item.active{background:#f8fafc;border-color:#e2e8f0}
+.prog-label{font-size:10px;color:#64748b;margin-bottom:2px}
+.prog-val{font-size:11px;font-weight:700;margin-bottom:5px}
+.prog-bar-bg{background:#f1f5f9;border-radius:3px;height:4px;overflow:hidden}
+.prog-bar-fill{height:4px;border-radius:3px}
+.prog-note{font-size:9px;color:#94a3b8;margin-top:2px}
+
+/* ── ④ 有休推移グラフ ── */
+.leave-trend-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* 棒グラフ(2fr) + 折れ線(1fr) の2列。モバイルでは縦積みに切り替え */
+.leave-charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+
+/* ── Summary table ── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.stbl{width:100%;font-size:11px;border-collapse:collapse;min-width:480px}
+table.stbl thead th{text-align:right;padding:6px 7px;font-size:10px;font-weight:600;border-bottom:2px solid #e2e8f0;white-space:nowrap;min-width:68px}
+table.stbl thead th:first-child{text-align:left;min-width:36px}
+table.stbl tbody td{padding:4px 7px;text-align:right;border-bottom:1px solid #f8fafc;font-family:'Courier New',monospace;font-size:11px;white-space:nowrap;min-width:68px}
+table.stbl tbody td:first-child{text-align:left;font-family:inherit;font-weight:500;color:#374151;white-space:nowrap;min-width:36px}
+table.stbl tbody tr:hover td{background:#f8fafc}
+table.stbl tbody tr.total-row td{font-weight:700;background:#f8fafc;border-top:2px solid #e2e8f0}
+table.stbl tbody tr.current-month-row td{background:#fefce8 !important;font-weight:700}
+table.stbl tbody tr.current-month-row td:first-child::after{content:" ◀";font-size:9px;color:#EAB308;font-family:inherit}
+table.stbl tbody td.over-cell{color:#dc2626 !important;font-weight:700}
+
+/* ── Buttons ── */
+.btn-group{display:flex;gap:4px;flex-wrap:wrap}
+.yr-btn{padding:4px 11px;font-size:11px;font-weight:600;border-radius:7px;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;cursor:pointer;transition:all .15s}
+.yr-btn.active{color:#fff;border-color:transparent}
+.btn{padding:5px 12px;font-size:12px;font-weight:600;border-radius:7px;border:1px solid #e2e8f0;background:#f8fafc;color:#475569;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.btn:hover{background:#f1f5f9}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
+.btn-primary:hover{background:#0C447C}
+.btn-success{background:#166534;color:#fff;border-color:#166534}
+.btn-success:hover{background:#14532d}
+.btn-danger{background:#fff;color:#A32D2D;border-color:#f0a0a0}
+.btn-danger:hover{background:#FCEBEB}
+.btn-warn{background:#fff;color:#92400e;border-color:#fcd34d}
+.btn-sm{padding:2px 7px;font-size:10px}
+.btn-print{background:#0f172a;color:#fff;border-color:#0f172a;font-size:11px;padding:5px 11px}
+select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24px 4px 8px;color:#475569;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 6px center;appearance:none;cursor:pointer}
+
+/* ── ⑤ Group badge ── */
+.grp-badge{display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;vertical-align:middle;margin-left:4px;white-space:nowrap}
+
+/* ── Input section ── */
+.input-card-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.year-input-tabs{display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:3px;margin-bottom:12px;width:fit-content}
+.year-input-tab{padding:4px 16px;font-size:12px;font-weight:600;border-radius:6px;border:none;background:transparent;color:#64748b;cursor:pointer;transition:all .15s}
+.year-input-tab.active{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.ot-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}
+.ot-cell{display:flex;flex-direction:column;gap:2px}
+.ot-cell label{font-size:10px;font-weight:600;color:#64748b;text-align:center;padding:2px 0;border-radius:4px}
+.ot-cell label.current-month-label{background:#fef08a;color:#854F0B;font-weight:700}
+.ot-cell .tgt-hint{font-size:9px;color:#94a3b8;text-align:center}
+.ot-input{width:100%;text-align:center;border:1px solid #e2e8f0;border-radius:5px;padding:4px 3px;font-size:12px;color:#0f172a;background:#f8fafc}
+.ot-input:focus{outline:none;border-color:#185FA5;background:#fff}
+.ot-input.has-value{background:#EAF3DE;border-color:#639922;color:#27500A;font-weight:600}
+.ot-input.over-target{background:#FCEBEB;border-color:#E24B4A;color:#A32D2D;font-weight:600}
+.ot-input.current-month-input{border-width:2px;border-color:#EAB308}
+.ot-summary-bar{display:flex;gap:14px;flex-wrap:wrap;padding:8px 12px;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0}
+.ot-sum-item{font-size:11px;color:#64748b}
+.ot-sum-item strong{font-weight:700}
+
+/* ── Member table ── */
+.member-wrap{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
+.member-table{width:100%;font-size:11px;border-collapse:collapse;min-width:440px}
+.member-table th{padding:6px 8px;font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;border-bottom:2px solid #e2e8f0;text-align:center;white-space:nowrap}
+.member-table th:first-child{text-align:left}
+.member-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center;vertical-align:middle;white-space:nowrap}
+.member-table td:first-child{text-align:left;font-weight:600;color:#1e293b;white-space:nowrap}
+.member-table tr:hover > td{background:#f8fafc}
+.num-input{width:50px;text-align:center;border:1px solid #e2e8f0;border-radius:5px;padding:3px 4px;font-size:11px;color:#1e293b;background:#f8fafc}
+.num-input:focus{outline:none;border-color:#185FA5;background:#fff}
+.achv-bar-bg{background:#f1f5f9;border-radius:10px;height:6px;width:58px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:3px}
+.achv-bar-fill{height:6px;border-radius:10px;transition:width .3s}
+.achv-pct{font-size:10px;font-weight:700}
+.add-form{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px 12px;background:#f8fafc;border-radius:7px;border:1.5px dashed #cbd5e1;margin-top:8px}
+.add-form label{font-size:10px;color:#64748b;font-weight:600}
+.add-form input[type=text]{padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;width:82px}
+.add-form input[type=number]{padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;width:58px}
+.add-form input:focus{outline:none;border-color:#185FA5}
+.drag-handle{cursor:grab;color:#94a3b8;font-size:15px;padding:0 2px;user-select:none}
+.drag-handle:active{cursor:grabbing;color:#64748b}
+tr.drag-over > td{background:#eff6ff !important;outline:2px solid #185FA5;outline-offset:-1px}
+tr.dragging{opacity:.35}
+.move-btn{background:none;border:1px solid #e2e8f0;border-radius:3px;cursor:pointer;font-size:9px;padding:1px 4px;color:#64748b;line-height:1.2}
+.move-btn:hover:not(:disabled){background:#f1f5f9;color:#0f172a}
+.move-btn:disabled{opacity:.3;cursor:default}
+.move-cell{display:inline-flex;flex-direction:column;gap:1px;vertical-align:middle;margin-right:4px}
+.month-expand-row td{background:#f8fafc !important;padding:8px 12px !important}
+.month-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.month-cell{display:flex;flex-direction:column;gap:2px;align-items:center}
+.month-cell label{font-size:9px;font-weight:600;color:#64748b}
+.month-cell input{width:48px;text-align:center;border:1px solid #e2e8f0;border-radius:5px;padding:3px 2px;font-size:11px;color:#1e293b;background:#fff}
+.month-cell input:focus{outline:none;border-color:#185FA5}
+.month-total{font-size:11px;color:#475569;padding:6px 0 2px;grid-column:1/-1;text-align:right}
+
+/* ── ⑤ Group management ── */
+.group-mgr{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px}
+.group-mgr-title{font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px}
+.group-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.group-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid transparent;cursor:default}
+.group-chip button{background:none;border:none;cursor:pointer;font-size:10px;color:inherit;opacity:.6;padding:0 0 0 2px}
+.group-chip button:hover{opacity:1}
+.group-add-row{display:flex;gap:6px;align-items:center}
+.group-add-row input{padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;width:100px}
+.group-add-row input:focus{outline:none;border-color:#185FA5}
+
+/* CSS棒グラフ */
+#memberWrap{width:100%;overflow:hidden}
+.cbar-chart{width:100%}
+.cbar-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.cbar-row:hover .cbar-track{opacity:.85}
+.cbar-name{width:46px;font-size:11px;font-weight:600;color:#334155;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbar-track{flex:1;display:flex;height:14px;border-radius:3px;overflow:hidden}
+.cbar-taken{height:100%;flex-shrink:0;transition:width .3s}
+.cbar-remain{height:100%;flex-shrink:0;background:#dde3eb}
+.cbar-empty{height:100%;flex-shrink:0}
+.cbar-pct{width:36px;font-size:10px;font-weight:700;text-align:right;flex-shrink:0}
+.cbar-days{width:28px;font-size:10px;color:#94a3b8;text-align:right;flex-shrink:0}
+.cbar-grp{font-size:9px;padding:0 5px;border-radius:8px;flex-shrink:0;font-weight:600}
+.cbar-axis-row{display:flex;align-items:flex-start;gap:5px;margin-top:5px;padding-top:4px;border-top:1px solid #e2e8f0}
+.cbar-name-spc{width:46px;flex-shrink:0}
+.cbar-axis{flex:1;position:relative;height:16px}
+.cbar-right-spc{width:80px;flex-shrink:0}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:500;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:20px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal h3{font-size:14px;font-weight:700;margin-bottom:10px;color:#0f172a}
+.modal-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+/* ── PIN Modal ── */
+.pin-modal{width:280px;padding:24px 20px}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid #cbd5e1;background:transparent;display:inline-block;transition:all .15s}
+.pin-dot.filled{background:#0f172a;border-color:#0f172a;transform:scale(1.1)}
+.pin-dot.error{background:#dc2626;border-color:#dc2626}
+@keyframes pinShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.pin-shake{animation:pinShake .4s ease}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pin-key{padding:16px 8px;font-size:22px;font-weight:600;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc;cursor:pointer;text-align:center;transition:all .1s;user-select:none;color:#0f172a;-webkit-tap-highlight-color:transparent}
+.pin-key:active{background:#e2e8f0;transform:scale(.93)}
+.pin-del{font-size:18px;color:#64748b}
+.pin-cancel{font-size:12px;color:#94a3b8;font-weight:500}
+
+/* ===== PRINT A3縦 ===== */
+@media print{
+  @page{size:A3 portrait;margin:7mm 8mm}
+  *,*::before,*::after{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+  body{background:#fff !important}
+  .hdr{position:static !important;box-shadow:none;padding:5px 10px;border-bottom:1px solid #e2e8f0}
+  .hdr-left .hdr-title{font-size:13px}.hdr-left .hdr-sub{font-size:9px}
+  .hdr-right .btn-print,.hdr-right .nav-tabs,.hdr-right .btn-success,.hdr-right .btn-warn{display:none !important}
+  .hdr-right .today-badge,.hdr-right .badge{font-size:9px;padding:2px 7px}
+  .section{display:none !important}
+  #dashboardSection{display:block !important}
+  .main{display:grid !important;grid-template-columns:1fr 1fr;
+    grid-template-areas:"kpi kpi" "alert alert" "ot summary" "leave leave" "member member";
+    gap:5px;padding:4px 0 0;max-width:100%}
+  .kpi-grid{grid-area:kpi;gap:5px}
+  .alert-panel{grid-area:alert}
+  #topRow{display:contents}
+  #otCard{grid-area:ot}
+  #summaryCard{grid-area:summary}
+  #leaveTrendCard{grid-area:leave;padding:0}
+  #memberCard{grid-area:member}
+  .kpi{padding:6px 9px;border-radius:5px}
+  .kpi-label{font-size:8px;margin-bottom:2px}.kpi-val{font-size:17px}.kpi-unit{font-size:10px}
+  .kpi-sub{font-size:8px;margin-top:1px}.kpi-trend{font-size:9px;margin-top:3px}
+  .card{padding:8px 10px;border-radius:5px}
+  .card-title{font-size:11px;margin-bottom:1px}.card-sub{font-size:8px;margin-bottom:5px}
+  .legend{gap:7px;margin-bottom:5px}.legend-item{font-size:8px;gap:3px}
+  .legend-sq{width:7px;height:7px}.legend-line{width:14px;height:2px}.legend-dash{width:14px}
+  #otCard .chart-wrap{height:140px !important}
+  #leaveTrendBody{display:block !important}
+  #leaveTrendChevron{display:none}
+  #leaveTrendCard .chart-wrap{height:120px !important}
+  .prog-grid{display:none !important}
+  .tbl-wrap{overflow:visible}
+  table.stbl thead th{font-size:8px;padding:3px 4px}
+  table.stbl tbody td{font-size:8px;padding:2px 4px}
+  table.stbl tbody tr.current-month-row td{background:#fefce8 !important}
+  #memberCard .card-sub{margin-bottom:3px}
+  #memberCard .legend{margin-bottom:3px}
+  .cbar-row{margin-bottom:2px}.cbar-name{font-size:9px;width:40px}.cbar-track{height:11px}
+  .cbar-pct{font-size:8px;width:30px}.cbar-days{font-size:8px;width:24px}
+  .cbar-axis-row{margin-top:4px;padding-top:3px}.cbar-name-spc{width:40px}.cbar-right-spc{width:54px}
+  .cbar-axis span{font-size:8px !important}.cbar-grp{display:none}
+  .alert-panel{padding:0}.alert-header{padding:5px 10px}.alert-body{display:block;padding:0 10px 6px}
+  .alert-item{padding:4px 8px;font-size:9px}.alert-title{font-size:10px}.alert-chevron{display:none}
+  .btn-group,.yr-btn{display:none !important}
+  select{display:none !important}
+}
+@media(max-width:760px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  #topRow{grid-template-columns:1fr}.leave-trend-row{grid-template-columns:1fr}
+  .leave-charts-grid{grid-template-columns:1fr}
+  .leave-charts-grid .chart-wrap{height:160px !important}
+  .prog-grid{grid-template-columns:1fr}.ot-grid{grid-template-columns:repeat(4,1fr)}
+  .hdr{padding:9px 12px}.main{padding:10px 10px 32px}
+  /* モバイルでは取得率・残日数を非表示（横スクロール量を削減） */
+  .col-sp-hide{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-title">環境2課 中期経営計画ダッシュボード</div>
+    <div class="hdr-sub">2026〜2028年度 ／ 残業削減・有休取得計画</div>
+  </div>
+  <div class="hdr-right">
+    <span class="today-badge" id="todayBadge"></span>
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="dashboardNavTab" onclick="switchSection('dashboard',this)">📊 ダッシュボード</button>
+      <button class="nav-tab" id="inputNavTab" style="display:none" onclick="switchSection('input',this)">📝 実績入力</button>
+    </div>
+    <button class="btn btn-success" id="excelBtn" onclick="exportExcel()" style="display:none">📥 Excel出力</button>
+    <button class="btn btn-print" id="printBtn" onclick="doPrint()" style="display:none">🖨 印刷(A3縦)</button>
+    <button class="btn btn-sm" id="adminLoginBtn" onclick="openPinModal()" title="管理者ログイン" style="border-color:#7c3aed;color:#7c3aed">🔐 管理者</button>
+    <button class="btn btn-sm" id="adminLockBtn"  onclick="lockAdmin()"    title="管理者ロック" style="display:none;border-color:#16a34a;color:#16a34a">🔓 ロック</button>
+    <button class="btn btn-sm" id="settingsBtn" onclick="openSettings()" title="スプレッドシート連携設定" style="display:none">⚙️ 連携設定</button>
+    <span id="saveStatus" style="font-size:10px;color:#64748b;white-space:nowrap"></span>
+    <span class="badge">中期計画 2026-2028</span>
+  </div>
+</header>
+
+<!-- ダッシュボード -->
+<div id="dashboardSection" class="section active">
+  <div class="main">
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- ③ GAS未設定警告バナー（管理者ログイン時のみ表示） -->
+    <div id="gasWarningBanner" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px 16px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">⚠️</span>
+      <div>
+        <strong>スプレッドシート未連携</strong> — データはこの端末にのみ保存されています。<br>
+        <span style="font-size:10px;color:#b45309">⚙️ 連携設定からGoogle Apps ScriptのURLを設定すると、全端末でデータが共有されます。</span>
+      </div>
+      <button onclick="document.getElementById('gasWarningBanner').style.display='none'" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#92400e">×</button>
+    </div>
+    <div class="alert-panel" id="alertPanel"></div>
+
+    <div id="topRow">
+      <!-- 残業グラフ -->
+      <div class="card" id="otCard">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:3px;flex-wrap:wrap;gap:4px">
+          <div><div class="card-title">残業時間トレンド</div><div class="card-sub" id="otCardSub"></div></div>
+          <div class="btn-group" id="yearBtns"></div>
+        </div>
+        <div class="legend" id="otLegend"></div>
+        <div class="chart-wrap" style="height:210px"><canvas id="otChart"></canvas></div>
+        <div class="prog-grid" id="progGrid"></div>
+      </div>
+
+      <!-- 有休グラフ -->
+      <div class="card" id="memberCard">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:3px;flex-wrap:wrap;gap:4px">
+          <div>
+            <div class="card-title">メンバー別 有休取得状況</div>
+            <div class="card-sub">取得数と達成率（全<span id="memberCount">37</span>名）</div>
+          </div>
+          <div style="display:flex;gap:5px">
+            <!-- ⑤ グループフィルター -->
+            <select id="groupFilterSel" onchange="refreshMember()"><option value="all">全グループ</option></select>
+            <select id="memberFilterSel" onchange="refreshMember()">
+              <option value="all">全員</option><option value="low">50%未満</option>
+              <option value="mid">50〜79%</option><option value="high">80%以上</option>
+            </select>
+            <select id="memberSortSel" onchange="refreshMember()">
+              <option value="name">名前順</option><option value="achv_asc">取得率 低い順</option>
+              <option value="achv_desc">取得率 高い順</option>
+            </select>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-sq" style="background:#185FA5"></span>取得数（80%以上）</div>
+          <div class="legend-item"><span class="legend-sq" style="background:#854F0B"></span>50〜79%</div>
+          <div class="legend-item"><span class="legend-sq" style="background:#A32D2D"></span>50%未満</div>
+          <div class="legend-item"><span class="legend-sq" style="background:#dde3eb"></span>残り付与数</div>
+        </div>
+        <div id="memberWrap"></div>
+      </div>
+    </div>
+
+    <!-- 有休取得 月次推移（折りたたみ） -->
+    <div id="leaveTrendCard" class="card" style="padding:0;overflow:hidden">
+      <div class="alert-header" onclick="toggleLeaveTrend()" style="padding:10px 16px">
+        <div class="alert-title" style="font-size:13px;font-weight:700;color:#0f172a">有休取得 月次推移</div>
+        <span id="leaveTrendChevron" class="alert-chevron">▼</span>
+      </div>
+      <div id="leaveTrendBody" class="alert-body">
+        <div style="padding:0 16px 14px">
+          <div style="font-size:10px;color:#64748b;margin-bottom:8px">チーム全体の月別取得数（棒）と累積取得率（折れ線）の推移</div>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+            <select id="leaveTrendGroupSel" onchange="renderLeaveTrendChart()">
+              <option value="all">全グループ</option>
+            </select>
+          </div>
+          <div class="leave-charts-grid">
+            <div class="chart-wrap" style="height:180px"><canvas id="leaveTrendChart"></canvas></div>
+            <div class="chart-wrap" style="height:180px"><canvas id="leaveRateChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- サマリーテーブル -->
+    <div class="card" id="summaryCard">
+      <div class="card-title" style="margin-bottom:7px" id="summaryTitle"></div>
+      <div class="tbl-wrap"><table class="stbl" id="summaryTbl"></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- 実績入力 -->
+<div id="inputSection" class="section">
+  <div class="main" style="display:flex;flex-direction:column">
+    <!-- 残業入力 -->
+    <div class="card">
+      <div class="input-card-head">
+        <div>
+          <div class="card-title">① 残業実績 入力</div>
+          <div style="font-size:10px;color:#64748b;margin-top:1px">月別実績（h）を入力。緑=目標内 / 赤=超過 / 黄枠=当月</div>
+        </div>
+        <button class="btn btn-sm" onclick="clearActualYear()">🗑 この年度をクリア</button>
+      </div>
+      <div class="year-input-tabs">
+        <button class="year-input-tab active" id="itab2026" onclick="setInputYear('2026',this)">2026年度</button>
+        <button class="year-input-tab" id="itab2027" onclick="setInputYear('2027',this)">2027年度</button>
+        <button class="year-input-tab" id="itab2028" onclick="setInputYear('2028',this)">2028年度</button>
+      </div>
+      <div class="ot-grid" id="otInputGrid"></div>
+      <div class="ot-summary-bar">
+        <div class="ot-sum-item">入力済合計: <strong id="actual_total" style="color:#185FA5">0.0 h</strong></div>
+        <div class="ot-sum-item">対応月の目標: <strong id="target_val" style="color:#0F6E56">— h</strong></div>
+        <div class="ot-sum-item">目標対比: <strong id="achieve_val">—</strong></div>
+      </div>
+    </div>
+
+    <!-- ⑤ グループ管理 -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:8px">⑤ グループ管理</div>
+      <div class="group-mgr">
+        <div class="group-mgr-title">グループ一覧（メンバーに割り当て可能）</div>
+        <div class="group-list" id="groupList"></div>
+        <div class="group-add-row">
+          <input type="text" id="newGroupName" placeholder="新しいグループ名" maxlength="12">
+          <button class="btn btn-primary btn-sm" onclick="addGroup()">＋ 追加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- メンバー管理 -->
+    <div class="card">
+      <div class="input-card-head">
+        <div>
+          <div class="card-title">② メンバー有休 管理</div>
+          <div style="font-size:10px;color:#64748b;margin-top:1px">「名前順」で ⠿ ドラッグ or ↑↓ 並べ替え可。「月別」で月ごと入力可。</div>
+        </div>
+        <select id="inputSortSel" onchange="renderInputTable()">
+          <option value="name">名前順（並べ替え可 ↕）</option>
+          <option value="achv_asc">取得率 低い順</option>
+          <option value="achv_desc">取得率 高い順</option>
+          <option value="taken_desc">取得数 多い順</option>
+        </select>
+      </div>
+      <div class="member-wrap">
+        <table class="member-table" id="memberInputTable">
+          <thead id="memberThead"><tr>
+            <th style="width:26px"></th>
+            <th style="text-align:left;min-width:56px">氏名</th>
+            <th>グループ</th><th>付与数</th><th>取得数</th>
+            <th class="col-sp-hide" style="min-width:120px">取得率</th>
+            <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th><th style="width:50px"></th>
+          </tr></thead>
+          <tbody id="memberTbody"></tbody>
+        </table>
+      </div>
+      <div class="add-form">
+        <label>氏名</label><input type="text" id="newName" placeholder="例: 山田" maxlength="10">
+        <label>付与日数</label><input type="number" id="newDays" min="1" max="40" value="20">
+        <button class="btn btn-primary" onclick="addMember()">＋ 追加</button>
+      </div>
+    </div>
+
+    <!-- ⚠️ データ管理（折りたたみ） -->
+    <div class="card" style="border-color:#fcd34d">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none"
+           onclick="toggleDataMgr()">
+        <span style="font-size:12px;font-weight:700;color:#92400e">⚠️ データ管理</span>
+        <span id="dataMgrChevron" style="font-size:11px;color:#94a3b8;transition:transform .2s">▼</span>
+      </div>
+      <div id="dataMgrBody" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #fde68a">
+        <p style="font-size:11px;color:#64748b;margin-bottom:10px">
+          すべての入力データ（残業実績・有休取得・グループ）を初期状態に戻します。<br>
+          <strong style="color:#92400e">この操作は元に戻せません。</strong>
+        </p>
+        <button class="btn btn-danger" onclick="confirmReset()">🗑 全データをリセット</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="modal-bg" id="deleteModal">
+  <div class="modal">
+    <h3>メンバーを削除</h3>
+    <p style="font-size:12px;color:#475569;margin-bottom:4px"><strong id="deleteTargetName"></strong> を削除しますか？</p>
+    <p style="font-size:10px;color:#94a3b8">この操作は元に戻せません。</p>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">削除する</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="settingsModal">
+  <div class="modal" style="width:380px">
+    <h3>⚙️ スプレッドシート連携設定</h3>
+    <p style="font-size:11px;color:#475569;margin-bottom:12px">
+      Google Apps Script のウェブアプリURLを設定すると、入力のたびに自動でスプレッドシートへ保存されます。
+    </p>
+    <div style="margin-bottom:8px">
+      <label style="font-size:10px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">ウェブアプリ URL</label>
+      <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/..."
+        style="width:100%;padding:7px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;color:#1e293b;outline:none"
+        onfocus="this.style.borderColor='#185FA5'" onblur="this.style.borderColor='#e2e8f0'">
+    </div>
+    <div style="background:#f8fafc;border-radius:7px;padding:10px 12px;font-size:10px;color:#64748b;margin-bottom:10px;line-height:1.6">
+      <strong style="color:#0f172a">設定手順:</strong><br>
+      1. 添付の <code>kankyoka_gas.gs</code> をコピー<br>
+      2. スプレッドシート → 拡張機能 → Apps Script に貼り付け<br>
+      3. デプロイ → 新しいデプロイ（種類: ウェブアプリ）<br>
+      4. 実行ユーザー: <strong>自分</strong>、アクセス: <strong>全員</strong><br>
+      5. 生成されたURLをここに貼り付け
+    </div>
+    <div id="gasTestResult" style="font-size:11px;min-height:18px;text-align:center;margin-bottom:8px"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal()">キャンセル</button>
+      <button class="btn" onclick="testGasConnection()" style="color:#185FA5;border-color:#185FA5">🔌 接続テスト</button>
+      <button class="btn btn-primary" onclick="saveGasUrl()">保存して連携</button>
+    </div>
+    <!-- ⑥ パスワード変更 -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9">
+      <div style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px">🔑 パスワード変更</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <input type="password" id="changePinCurrent" placeholder="現在のパスワード（4桁）" maxlength="4" inputmode="numeric"
+          style="padding:6px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;width:100%;outline:none">
+        <input type="password" id="changePinNew"     placeholder="新しいパスワード（4桁）"  maxlength="4" inputmode="numeric"
+          style="padding:6px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;width:100%;outline:none">
+        <input type="password" id="changePinNew2"    placeholder="新しいパスワード（確認）" maxlength="4" inputmode="numeric"
+          style="padding:6px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;width:100%;outline:none">
+        <button class="btn btn-primary btn-sm" onclick="changePassword()">変更する</button>
+        <div id="changePinResult" style="font-size:10px;min-height:14px;text-align:center"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="pinModal">
+  <div class="modal pin-modal">
+    <div style="text-align:center;margin-bottom:6px;font-size:15px;font-weight:700;color:#0f172a">🔐 管理者ログイン</div>
+    <div style="text-align:center;font-size:11px;color:#64748b;margin-bottom:18px">4桁のパスワードを入力してください</div>
+    <!-- 入力ドット -->
+    <div id="pinDots" style="display:flex;justify-content:center;gap:18px;margin-bottom:20px">
+      <span class="pin-dot" id="pd0"></span>
+      <span class="pin-dot" id="pd1"></span>
+      <span class="pin-dot" id="pd2"></span>
+      <span class="pin-dot" id="pd3"></span>
+    </div>
+    <div id="pinError" style="text-align:center;font-size:11px;color:#dc2626;min-height:16px;margin-bottom:12px"></div>
+    <!-- テンキー -->
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="enterPin('1')">1</button>
+      <button class="pin-key" onclick="enterPin('2')">2</button>
+      <button class="pin-key" onclick="enterPin('3')">3</button>
+      <button class="pin-key" onclick="enterPin('4')">4</button>
+      <button class="pin-key" onclick="enterPin('5')">5</button>
+      <button class="pin-key" onclick="enterPin('6')">6</button>
+      <button class="pin-key" onclick="enterPin('7')">7</button>
+      <button class="pin-key" onclick="enterPin('8')">8</button>
+      <button class="pin-key" onclick="enterPin('9')">9</button>
+      <button class="pin-key pin-cancel" onclick="closeModal()">取消</button>
+      <button class="pin-key" onclick="enterPin('0')">0</button>
+      <button class="pin-key pin-del" onclick="deletePin()">⌫</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="resetModal">
+  <div class="modal">
+    <h3>データをリセット</h3>
+    <p style="font-size:12px;color:#475569;margin-bottom:4px">すべての入力データを初期状態に戻します。</p>
+    <p style="font-size:10px;color:#94a3b8">この操作は元に戻せません。</p>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-danger" onclick="doReset()">リセットする</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══ 日付 ═══ */
+const TODAY       = new Date();
+const CAL_MONTH   = TODAY.getMonth() + 1;
+const CAL_YEAR    = TODAY.getFullYear();
+const FISCAL_IDX  = CAL_MONTH >= 4 ? CAL_MONTH - 4 : CAL_MONTH + 8;
+const FISCAL_YEAR = CAL_MONTH >= 4 ? CAL_YEAR : CAL_YEAR - 1;
+const MONTHS = ["4月","5月","6月","7月","8月","9月","10月","11月","12月","1月","2月","3月"];
+
+/* ═══ 固定データ ═══ */
+const OT25     = [239,148,245.5,234.5,229,283.75,276.5,351.25,366.5,289,297.7,401];
+const OT26_TGT = OT25.map(v => Math.round(v*.50*100)/100);
+const OT27_TGT = OT25.map(v => Math.round(v*.40*100)/100);
+const OT28_TGT = OT25.map(v => Math.round(v*.30*100)/100);
+const YCFG = [
+  {key:"2026",label:"2026年度目標",reduction:50,tgt:OT26_TGT,color:"#0F6E56"},
+  {key:"2027",label:"2027年度目標",reduction:60,tgt:OT27_TGT,color:"#854F0B"},
+  {key:"2028",label:"2028年度目標",reduction:70,tgt:OT28_TGT,color:"#A32D2D"},
+];
+const KEYS = YCFG.map(y=>y.key);
+
+/* ═══ ⑤ グループカラー ═══ */
+const GRP_COLORS = [
+  {bg:"#dbeafe",text:"#1e40af"},{bg:"#dcfce7",text:"#166534"},
+  {bg:"#fce7f3",text:"#9d174d"},{bg:"#fef3c7",text:"#92400e"},
+  {bg:"#ede9fe",text:"#5b21b6"},{bg:"#ffedd5",text:"#9a3412"},
+];
+function grpColor(name) {
+  if (!name) return {bg:"#f1f5f9",text:"#64748b"};
+  const i = groups.indexOf(name);
+  return i >= 0 ? GRP_COLORS[i % GRP_COLORS.length] : {bg:"#f1f5f9",text:"#64748b"};
+}
+
+/* ═══ 初期データ ═══ */
+const INIT_MEMBERS = [
+  {name:"糟谷",days:20},{name:"梶賀",days:20},{name:"本田",days:20},{name:"髙橋",days:15},
+  {name:"優大",days:18},{name:"尾形",days:18},{name:"駿",days:20},{name:"隆宏",days:16},
+  {name:"小川",days:12},{name:"中沢",days:11},{name:"光",days:11},{name:"塚田",days:11},
+  {name:"相原",days:20},{name:"中村",days:20},{name:"菅原",days:20},{name:"菊池",days:20},
+  {name:"工藤",days:11},{name:"木村",days:20},{name:"彰",days:20},{name:"弘規",days:20},
+  {name:"宮里",days:14},{name:"大須賀",days:14},{name:"庄司",days:20},{name:"凌太",days:19},
+  {name:"今野",days:20},{name:"隆平",days:20},{name:"小野",days:20},{name:"蜂屋",days:20},
+  {name:"政井",days:20},{name:"秋元",days:16},{name:"布施",days:11},{name:"高志",days:20},
+  {name:"浮須",days:20},{name:"健太朗",days:20},{name:"西村",days:20},{name:"凌太郎",days:20},
+  {name:"狭山",days:11}
+].map(m=>({...m,takenMonths:new Array(12).fill(0),group:""}));
+
+/* ═══ GAS連携 + localStorage ═══ */
+const STORE_KEY = 'kankyoka_v3';
+const GAS_KEY   = 'kankyoka_gas_url';
+function mkInitActual(){ return {'2026':new Array(12).fill(null),'2027':new Array(12).fill(null),'2028':new Array(12).fill(null)}; }
+let actualData = mkInitActual();
+let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
+let groups     = [];
+let gasUrl     = '';
+let saveTimer  = null;
+
+function setSaveStatus(s){
+  const el=document.getElementById('saveStatus'); if(!el) return;
+  const map={idle:'',loading:'⏳ 読込中…',saving:'⏳ 保存中…',saved:'✅ 保存済',error:'⚠️ 保存失敗（ローカルのみ）',local:'💾 ローカル保存済'};
+  el.textContent=map[s]||'';
+  el.style.color=s==='error'?'#dc2626':s==='saved'?'#16a34a':'#64748b';
+}
+
+// ① データ保存（localStorage即時 + GAS遅延2秒デバウンス）
+function saveData(){
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups})); }catch(e){}
+  setSaveStatus('local');
+  if(!gasUrl){ return; }
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveToGAS, 2000);
+}
+
+async function saveToGAS(){
+  if(!gasUrl) return;
+  setSaveStatus('saving');
+  try{
+    const body=JSON.stringify({actualData,members,groups});
+    const res=await fetch(gasUrl,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
+    const json=await res.json();
+    if(json.error) throw new Error(json.error);
+    setSaveStatus('saved');
+    setTimeout(()=>setSaveStatus('idle'),3000);
+  }catch(e){
+    setSaveStatus('error');
+    setTimeout(()=>setSaveStatus('idle'),4000);
+  }
+}
+
+// データ適用（GAS/localStorage共通）
+function applyData(d){
+  if(!d) return;
+  if(d.actualData) KEYS.forEach(k=>{ if(d.actualData[k]) actualData[k]=d.actualData[k]; });
+  if(d.members&&Array.isArray(d.members))
+    members=d.members.map(m=>({...m,takenMonths:m.takenMonths||new Array(12).fill(0),group:m.group||''}));
+  if(d.groups&&Array.isArray(d.groups)) groups=d.groups;
+}
+
+// 初期読込（GAS優先 → localStorage fallback）
+async function loadData(){
+  gasUrl=localStorage.getItem(GAS_KEY)||'';
+  if(gasUrl){
+    setSaveStatus('loading');
+    try{
+      const res=await fetch(gasUrl+'?t='+Date.now(),{redirect:'follow'});
+      const d=await res.json();
+      if(!d.error&&(d.actualData||d.members)){
+        applyData(d);
+        // localStorageにも同期
+        try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){}
+        setSaveStatus('saved');
+        setTimeout(()=>setSaveStatus('idle'),2000);
+        return;
+      }
+    }catch(e){ /* GAS失敗 → localStorageへ */ }
+  }
+  // localStorageから読込
+  try{
+    const raw=localStorage.getItem(STORE_KEY);
+    if(raw) applyData(JSON.parse(raw));
+  }catch(e){}
+  setSaveStatus('idle');
+}
+
+function doReset(){
+  actualData=mkInitActual(); members=INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]})); groups=[];
+  saveData(); closeModal(); renderAll();
+}
+function confirmReset(){ document.getElementById("resetModal").classList.add("open"); }
+
+/* ═══ 設定モーダル ═══ */
+function openSettings(){
+  document.getElementById('gasUrlInput').value=gasUrl;
+  document.getElementById('gasTestResult').textContent='';
+  document.getElementById('settingsModal').classList.add('open');
+}
+function saveGasUrl(){
+  const url=document.getElementById('gasUrlInput').value.trim();
+  gasUrl=url;
+  localStorage.setItem(GAS_KEY,url);
+  closeModal();
+  if(url) saveToGAS();
+  else setSaveStatus('idle');
+}
+async function testGasConnection(){
+  const url=document.getElementById('gasUrlInput').value.trim();
+  const el=document.getElementById('gasTestResult');
+  if(!url){ el.style.color='#dc2626'; el.textContent='URLを入力してください'; return; }
+  el.style.color='#64748b'; el.textContent='接続確認中…';
+  try{
+    const res=await fetch(url+'?t='+Date.now(),{redirect:'follow'});
+    const d=await res.json();
+    if(d.error) throw new Error(d.error);
+    el.style.color='#16a34a';
+    el.textContent='✅ 接続成功！データを読み込めます。';
+  }catch(e){
+    el.style.color='#dc2626';
+    el.textContent='❌ 接続失敗: URLを確認してください';
+  }
+}
+
+/* ═══ 状態 ═══ */
+const DEFAULT_YEAR = KEYS.includes(String(FISCAL_YEAR))?String(FISCAL_YEAR):KEYS.includes(String(FISCAL_YEAR-1))?String(FISCAL_YEAR-1):KEYS[0];
+let selYear    = DEFAULT_YEAR;
+let inputYear  = DEFAULT_YEAR;
+let otChartInst=null, leaveTrendInst=null, leaveRateInst=null;
+let deleteTarget=-1, expandedRow=-1, dragSrcIdx=null, alertOpen=false, leaveTrendOpen=false;
+
+/* ═══ ユーティリティ ═══ */
+const sumArr  = a=>a.reduce((s,v)=>s+(v??0),0);
+const f       = (v,d=1)=>v==null?"—":Number(v).toFixed(d);
+const mTaken  = m=>sumArr(m.takenMonths);
+const achvPct = (t,d)=>d>0?Math.min(100,Math.round(t/d*100)):0;
+const barColor= p=>p>=80?"#185FA5":p>=50?"#854F0B":"#A32D2D";
+const getYC   = ()=>YCFG.find(y=>y.key===selYear);
+const getIYC  = ()=>YCFG.find(y=>y.key===inputYear);
+// Safari 15.3以前は findLastIndex / findLast 未サポートのためポリフィル
+function arrFindLastIndex(arr, pred){ for(let i=arr.length-1;i>=0;i--){ if(pred(arr[i],i)) return i; } return -1; }
+function arrFindLast(arr, pred){ for(let i=arr.length-1;i>=0;i--){ if(pred(arr[i],i)) return arr[i]; } return undefined; }
+
+/* ═══ ヘッダー ═══ */
+function renderTodayBadge(){
+  const mm=String(TODAY.getMonth()+1).padStart(2,"0"), dd=String(TODAY.getDate()).padStart(2,"0");
+  document.getElementById("todayBadge").textContent=`${CAL_YEAR}年${mm}月${dd}日（${FISCAL_YEAR}年度 ${MONTHS[FISCAL_IDX]}）`;
+}
+
+/* ═══ セクション ═══ */
+function switchSection(id,btn){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.querySelectorAll(".nav-tab").forEach(b=>b.classList.remove("active"));
+  document.getElementById(id+"Section").classList.add("active");
+  btn.classList.add("active");
+  if(id==="input"){
+    syncInputYearTab(); // ⑦ 当年度タブを自動選択
+    renderGroupUI(); renderOTInputGrid(); renderInputTable();
+  }
+}
+/* ⑦ 入力タブの年度ボタンを当年度に合わせる */
+function syncInputYearTab(){
+  document.querySelectorAll(".year-input-tab").forEach(b=>b.classList.remove("active"));
+  const tab=document.getElementById("itab"+inputYear);
+  if(tab) tab.classList.add("active");
+}
+
+/* ═══ ① KPI（トレンド矢印付き） ═══ */
+function renderKPI(){
+  const total25 = sumArr(OT25);
+  const totalTaken = sumArr(members.map(m=>mTaken(m)));
+  const totalDays  = sumArr(members.map(m=>m.days));
+  const avgAchv    = achvPct(totalTaken,totalDays);
+  const act26      = actualData['2026'];
+  const valid26    = act26.filter(v=>v!==null);
+  const act26sum   = sumArr(valid26);
+  const last26     = arrFindLastIndex(act26, v=>v!==null);
+  const tgt26sum   = last26>=0?sumArr(OT26_TGT.slice(0,last26+1)):0;
+  const otAchv     = tgt26sum>0?(act26sum/tgt26sum*100).toFixed(1)+"%":"—";
+
+  // ① 前月比トレンド計算
+  function otTrendHTML(){
+    if(valid26.length<2) return '';
+    const cur=act26[last26], prev=arrFindLast(act26,(v,i)=>v!==null&&i<last26);
+    if(prev==null) return '';
+    const delta=cur-prev, pct=Math.abs((delta/prev*100)).toFixed(1);
+    const up=delta>0;
+    const cls=up?"up-bad":"dn-good";
+    return `<div class="kpi-trend ${cls}">${up?"▲":"▼"} ${f(Math.abs(delta),1)}h（${pct}%）前月比</div>`;
+  }
+  function achvTrendHTML(){
+    const target=80, diff=avgAchv-target;
+    const cls=diff>=0?"up-good":"dn-bad";
+    return `<div class="kpi-trend ${cls}">${diff>=0?"▲":"▼"} ${Math.abs(diff)}% vs 目標80%</div>`;
+  }
+  function otVsTargetHTML(){
+    if(!tgt26sum) return '';
+    const diff=act26sum-tgt26sum, pct=(diff/tgt26sum*100).toFixed(1);
+    const over=diff>0;
+    return `<div class="kpi-trend ${over?"up-bad":"dn-good"}">${over?"▲超過":"▼目標内"} ${f(Math.abs(diff),1)}h（${Math.abs(pct)}%）</div>`;
+  }
+
+  const achvColor = avgAchv>=80?"#085041":avgAchv>=50?"#854F0B":"#A32D2D";
+  const kpiCls    = avgAchv>=80?"ok":avgAchv>=50?"":"danger";
+  const items = [
+    {label:"メンバー数",          val:members.length,  unit:"名",  sub:"有休付与合計: "+sumArr(members.map(m=>m.days))+"日",  color:"#0f172a", cls:"",      trend:""},
+    {label:"2025年度 残業合計",   val:f(total25,0),    unit:"h",   sub:"4月〜3月（12ヶ月）",                                  color:"#c2410c", cls:"",      trend:""},
+    {label:"有休取得率（全体）",  val:avgAchv,          unit:"%",   sub:"取得: "+totalTaken+"日 / 付与: "+totalDays+"日",      color:achvColor, cls:kpiCls,  trend:achvTrendHTML()},
+    {label:"2026年度 残業実績",   val:f(act26sum,0),   unit:"h",   sub:"目標対比: "+otAchv+"（"+valid26.length+"ヶ月入力）",  color:"#185FA5", cls:"",      trend:otTrendHTML()+otVsTargetHTML()},
+  ];
+  document.getElementById("kpiGrid").innerHTML=items.map(k=>`
+    <div class="kpi ${k.cls}">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-val" style="color:${k.color}">${k.val}<span class="kpi-unit">${k.unit}</span></div>
+      <div class="kpi-sub">${k.sub}</div>
+      ${k.trend}
+    </div>`).join("");
+  document.getElementById("memberCount").textContent=members.length;
+}
+
+/* ═══ アラート ═══ */
+function toggleAlert(){
+  alertOpen=!alertOpen;
+  document.getElementById("alertBody")?.classList.toggle("open",alertOpen);
+  document.getElementById("alertChevron")?.classList.toggle("open",alertOpen);
+}
+function toggleDataMgr(){
+  const body=document.getElementById('dataMgrBody');
+  const chev=document.getElementById('dataMgrChevron');
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  if(chev) chev.style.transform=open?'rotate(180deg)':'';
+}
+function toggleLeaveTrend(){
+  leaveTrendOpen=!leaveTrendOpen;
+  document.getElementById('leaveTrendBody')?.classList.toggle('open',leaveTrendOpen);
+  document.getElementById('leaveTrendChevron')?.classList.toggle('open',leaveTrendOpen);
+  if(leaveTrendOpen) renderLeaveTrendChart(); // 展開時のみ描画
+}
+function renderAlerts(){
+  const lowM=members.filter(m=>{const t=mTaken(m);return m.days>0&&achvPct(t,m.days)<50&&(m.days-t)>0;});
+  const overO=KEYS.flatMap(k=>{
+    const yc=YCFG.find(y=>y.key===k);
+    return actualData[k].map((v,i)=>v!==null&&yc.tgt[i]!==null&&v>yc.tgt[i]?{year:k,month:MONTHS[i],actual:v,target:yc.tgt[i]}:null).filter(Boolean);
+  });
+  const alerts=[];
+  overO.forEach(o=>alerts.push({type:"danger",icon:"🔴",msg:`残業超過: ${o.year}年度 ${o.month} — 実績 ${f(o.actual)}h（目標 ${f(o.target)}h、超過 +${f(o.actual-o.target)}h）`}));
+  lowM.forEach(m=>{const t=mTaken(m);alerts.push({type:"warn",icon:"🟡",msg:`有休取得率低: ${m.name}（${t}日/${m.days}日付与 = ${achvPct(t,m.days)}%）`});});
+  const cnt=alerts.length;
+  const badge=cnt>0?`<span style="background:#ef4444;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px">${cnt}</span>`
+    :`<span style="background:#86efac;color:#166534;border-radius:20px;padding:1px 7px;font-size:10px">0</span>`;
+  const body=cnt===0?`<div class="alert-item ok"><span>✅</span>現在アラートはありません</div>`
+    :alerts.map(a=>`<div class="alert-item ${a.type}"><span>${a.icon}</span>${a.msg}</div>`).join('');
+  document.getElementById("alertPanel").innerHTML=`
+    <div class="alert-header" onclick="toggleAlert()">
+      <div class="alert-title">${cnt>0?"⚠️":"📋"} アラート ${badge}</div>
+      <span id="alertChevron" class="alert-chevron${alertOpen?" open":""}">▼</span>
+    </div>
+    <div id="alertBody" class="alert-body${alertOpen?" open":""}">
+      <div class="alert-list">${body}</div>
+    </div>`;
+}
+
+/* ═══ 年度ボタン ═══ */
+function renderYearBtns(){
+  document.getElementById("yearBtns").innerHTML=YCFG.map(y=>`
+    <button class="yr-btn${y.key===selYear?" active":""}"
+      ${y.key===selYear?`style="background:${y.color};border-color:${y.color}"`:""}
+      onclick="setYear('${y.key}')">${y.key}年度</button>`).join("");
+}
+function setYear(y){
+  selYear=y; renderYearBtns(); renderOTLegend(); renderOTChart();
+  renderProgress(); renderSummaryTable(); renderKPI();
+}
+
+/* ═══ OTグラフ（③ 詳細ツールチップ付き） ═══ */
+function renderOTLegend(){
+  const yc=getYC();
+  document.getElementById("otCardSub").textContent=`2025年度実績 vs ${selYear}年度目標（${yc.reduction}%削減）`;
+  const lc=['#7F77DD','#E58B28','#E06B6B'];
+  document.getElementById("otLegend").innerHTML=`
+    <div class="legend-item"><span class="legend-line" style="background:#185FA5"></span>2025実績</div>
+    <div class="legend-item"><span class="legend-dash" style="border-color:${yc.color}"></span>${selYear}目標</div>
+    ${KEYS.map((k,i)=>`<div class="legend-item"><span class="legend-line" style="background:${lc[i]}"></span>${k}実績</div>`).join('')}
+    <div class="legend-item"><span class="legend-sq" style="background:#fef08a;border:1px solid #EAB308"></span>当月</div>`;
+}
+function buildOTChartConfig(yc){
+  const tickColors=MONTHS.map((_,i)=>i===FISCAL_IDX?"#EAB308":"#64748b");
+  const lc=['#7F77DD','#E58B28','#E06B6B'];
+  return {
+    type:"line",
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:"2025年度実績",data:OT25,borderColor:"#185FA5",backgroundColor:"transparent",borderWidth:2.5,pointRadius:3,pointBackgroundColor:"#185FA5",spanGaps:false},
+        {label:yc.label,data:yc.tgt,borderColor:yc.color,backgroundColor:"transparent",borderWidth:2,borderDash:[6,4],pointRadius:3,pointBackgroundColor:yc.color,spanGaps:false},
+        ...KEYS.map((k,ki)=>({label:k+"年度実績",data:actualData[k],borderColor:lc[ki],backgroundColor:"transparent",borderWidth:2,pointRadius:3,pointBackgroundColor:lc[ki],spanGaps:false}))
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        // ③ 詳細ツールチップ
+        tooltip:{
+          callbacks:{
+            label(ctx){
+              const v=ctx.raw; if(v==null) return ctx.dataset.label+": —";
+              const base=ctx.dataset.label+": "+Number(v).toFixed(1)+"h";
+              // 実績行のみ目標比を追加
+              const kMatch=KEYS.find(k=>ctx.dataset.label===k+"年度実績");
+              if(!kMatch) return base;
+              const tgtArr=YCFG.find(y=>y.key===kMatch)?.tgt;
+              const tgt=tgtArr?.[ctx.dataIndex];
+              if(tgt==null) return base;
+              const diff=v-tgt, pct=(diff/tgt*100).toFixed(1);
+              const mark=diff>0?"⚠️超過":"✅目標内";
+              return [base, `  目標: ${f(tgt)}h / 差分: ${diff>0?"+":""}${f(diff)}h（${pct}%） ${mark}`];
+            },
+            title(items){ return MONTHS[items[0].dataIndex]+" の残業実績"; }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{font:{size:10},color:tickColors,autoSkip:false,maxRotation:0,
+            callback(val,i){return i===FISCAL_IDX?"▼"+MONTHS[i]:MONTHS[i];}},grid:{color:"#f1f5f9"}},
+        y:{beginAtZero:true,ticks:{font:{size:10},color:"#64748b",callback:v=>v+"h"},grid:{color:"#f1f5f9"}}
+      }
+    },
+    plugins:[{id:"cmb",beforeDraw(chart){
+      const{ctx,chartArea:{top,bottom},scales:{x}}=chart;
+      if(!x?.getPixelForTick) return;
+      const cx=x.getPixelForTick(FISCAL_IDX),step=x.getPixelForTick(1)-x.getPixelForTick(0);
+      ctx.save();ctx.fillStyle="rgba(250,240,100,0.18)";
+      ctx.fillRect(cx-step/2,top,step,bottom-top);ctx.restore();
+    }}]
+  };
+}
+function renderOTChart(){
+  const yc=getYC();
+  if(otChartInst) otChartInst.destroy();
+  otChartInst=new Chart(document.getElementById("otChart"),buildOTChartConfig(yc));
+  renderProgress();
+}
+function renderProgress(){
+  document.getElementById("progGrid").innerHTML=YCFG.map(y=>{
+    const t=sumArr(y.tgt),pv=100-y.reduction;
+    return `<div class="prog-item${y.key===selYear?" active":""}">
+      <div class="prog-label">${y.key}年度目標</div>
+      <div class="prog-val" style="color:${y.color}">${y.reduction}%削減 → ${f(t,0)}h</div>
+      <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${pv}%;background:${y.color}"></div></div>
+      <div class="prog-note">2025比 ${pv}%水準</div>
+    </div>`;
+  }).join("");
+}
+
+/* ═══ 有休取得 月次推移グラフ ═══ */
+function getLeaveGroupFilter(){
+  return document.getElementById("leaveTrendGroupSel")?.value||"all";
+}
+function renderLeaveTrendChart(){
+  if(!leaveTrendOpen) return; // 非表示時はスキップ
+  const grpF=getLeaveGroupFilter();
+  const filtered=grpF==="all"?members:members.filter(m=>m.group===grpF);
+  if(!filtered.length){
+    ["leaveTrendChart","leaveRateChart"].forEach(id=>{
+      const c=document.getElementById(id);if(c) c.getContext("2d").clearRect(0,0,c.width,c.height);
+    });
+    return;
+  }
+  const totalDays=sumArr(filtered.map(m=>m.days));
+  // 月別チーム取得数（accumulated）
+  const monthlyTaken=MONTHS.map((_,mi)=>sumArr(filtered.map(m=>m.takenMonths[mi]||0)));
+  const cumulTaken=monthlyTaken.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
+  const cumulRate=cumulTaken.map(c=>totalDays>0?+(c/totalDays*100).toFixed(1):0);
+
+  // 積み上げ棒グラフ（月別取得数）
+  if(leaveTrendInst) leaveTrendInst.destroy();
+  leaveTrendInst=new Chart(document.getElementById("leaveTrendChart"),{
+    type:"bar",
+    data:{
+      labels:MONTHS,
+      datasets:[{label:"月別取得数",data:monthlyTaken,backgroundColor:"#185FA590",borderRadius:3,maxBarThickness:20}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>"取得: "+ctx.raw+"日"}}},
+      scales:{
+        x:{ticks:{font:{size:9},color:"#64748b",maxRotation:45,autoSkip:true,maxTicksLimit:6,
+             callback:(val,i)=>MONTHS[i].replace("月","")+"月"},grid:{color:"#f1f5f9"}},
+        y:{beginAtZero:true,ticks:{font:{size:9},color:"#64748b",callback:v=>v+"日"},grid:{color:"#f1f5f9"}}
+      }
+    }
+  });
+
+  // 累積取得率折れ線
+  if(leaveRateInst) leaveRateInst.destroy();
+  leaveRateInst=new Chart(document.getElementById("leaveRateChart"),{
+    type:"line",
+    data:{
+      labels:MONTHS,
+      datasets:[
+        {label:"累積取得率",data:cumulRate,borderColor:"#185FA5",backgroundColor:"#185FA520",fill:true,borderWidth:2,pointRadius:2,tension:.3},
+        {label:"目標(80%)",data:new Array(12).fill(80),borderColor:"#16a34a",borderDash:[5,3],borderWidth:1.5,pointRadius:0}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+": "+ctx.raw+"%"}}},
+      scales:{
+        x:{ticks:{font:{size:9},color:"#64748b",maxRotation:45,autoSkip:true,maxTicksLimit:6,
+             callback:(val,i)=>MONTHS[i].replace("月","")+"月"},grid:{color:"#f1f5f9"}},
+        y:{min:0,max:110,ticks:{font:{size:9},color:"#64748b",maxTicksLimit:5,callback:v=>v+"%"},grid:{color:"#f1f5f9"}}
+      }
+    }
+  });
+}
+
+/* ═══ ⑤ グループ管理 ═══ */
+function updateGroupSelects(){
+  ["groupFilterSel","leaveTrendGroupSel"].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const cur=el.value;
+    el.innerHTML='<option value="all">全グループ</option>'+
+      groups.map(g=>`<option value="${g}">${g}</option>`).join('');
+    if(groups.includes(cur)) el.value=cur;
+  });
+}
+function renderGroupUI(){
+  updateGroupSelects();
+  const el=document.getElementById("groupList"); if(!el) return;
+  el.innerHTML=groups.length===0?'<span style="font-size:11px;color:#94a3b8">グループがありません。追加してください。</span>'
+    :groups.map((g,i)=>{
+      const c=GRP_COLORS[i%GRP_COLORS.length];
+      return `<span class="grp-badge group-chip" style="background:${c.bg};color:${c.text};border-color:${c.bg}">${g}
+        <button onclick="deleteGroup('${g}')" title="削除">×</button>
+      </span>`;
+    }).join('');
+}
+function addGroup(){
+  const name=document.getElementById("newGroupName").value.trim();
+  if(!name){ alert("グループ名を入力してください"); return; }
+  if(groups.includes(name)){ alert("同じ名前が既に存在します"); return; }
+  groups.push(name); document.getElementById("newGroupName").value="";
+  saveData(); renderGroupUI(); updateGroupSelects(); renderInputTable();
+}
+function deleteGroup(name){
+  if(!confirm(`「${name}」を削除しますか？\n（このグループを設定しているメンバーは未設定になります）`)) return;
+  groups=groups.filter(g=>g!==name);
+  members.forEach(m=>{ if(m.group===name) m.group=""; });
+  saveData(); renderGroupUI(); updateGroupSelects(); renderInputTable(); refreshMember();
+}
+
+/* ═══ CSS棒グラフ（有休） ═══ */
+function getDisplayMembers(){
+  const filt=document.getElementById("memberFilterSel").value;
+  const srt =document.getElementById("memberSortSel").value;
+  const grpF=document.getElementById("groupFilterSel").value;
+  let d=members.map((m,i)=>({...m,idx:i,taken:mTaken(m),achv:achvPct(mTaken(m),m.days)}));
+  if(grpF!=="all") d=d.filter(m=>m.group===grpF);
+  if(filt==="low")  d=d.filter(m=>m.achv<50);
+  if(filt==="mid")  d=d.filter(m=>m.achv>=50&&m.achv<80);
+  if(filt==="high") d=d.filter(m=>m.achv>=80);
+  if(srt==="achv_asc")   d.sort((a,b)=>a.achv-b.achv);
+  else if(srt==="achv_desc") d.sort((a,b)=>b.achv-a.achv);
+  return d;
+}
+function renderMemberChart(){
+  const d=getDisplayMembers();
+  if(!d.length){document.getElementById("memberWrap").innerHTML='<p style="font-size:12px;color:#94a3b8;padding:16px">該当メンバーなし</p>';return;}
+  const maxDays=Math.max(...d.map(m=>m.days));
+  const tvs=[]; for(let v=0;v<=maxDays;v+=5) tvs.push(v);
+  if(tvs[tvs.length-1]!==maxDays) tvs.push(maxDays);
+  const rows=d.map(m=>{
+    const tw=(m.taken/maxDays*100).toFixed(4);
+    const rw=(Math.max(0,m.days-m.taken)/maxDays*100).toFixed(4);
+    const ew=(Math.max(0,maxDays-m.days)/maxDays*100).toFixed(4);
+    const bc=barColor(m.achv);
+    const gc=grpColor(m.group);
+    return `<div class="cbar-row" title="取得: ${m.taken}日 / 付与: ${m.days}日（${m.achv}%）${m.group?' / '+m.group:''}">
+      <div class="cbar-name">${m.name}</div>
+      <div class="cbar-track">
+        <div class="cbar-taken"  style="width:${tw}%;background:${bc}"></div>
+        <div class="cbar-remain" style="width:${rw}%"></div>
+        <div class="cbar-empty"  style="width:${ew}%"></div>
+      </div>
+      <div class="cbar-pct" style="color:${bc}">${m.achv}%</div>
+      <div class="cbar-days">${m.days}日</div>
+      ${m.group?`<span class="cbar-grp" style="background:${gc.bg};color:${gc.text}">${m.group}</span>`:''}
+    </div>`;
+  }).join('');
+  const ticks=tvs.map((v,i)=>{
+    const pct=(v/maxDays*100).toFixed(4);
+    const sh=i===0?'0':i===tvs.length-1?'-100%':'-50%';
+    return `<span style="position:absolute;left:${pct}%;transform:translateX(${sh});font-size:9px;color:#64748b;white-space:nowrap">${v}日</span>`;
+  }).join('');
+  document.getElementById("memberWrap").innerHTML=`<div class="cbar-chart">${rows}
+    <div class="cbar-axis-row"><div class="cbar-name-spc"></div><div class="cbar-axis">${ticks}</div><div class="cbar-right-spc"></div></div>
+  </div>`;
+}
+function refreshMember(){renderKPI();renderAlerts();renderMemberChart();if(leaveTrendOpen)renderLeaveTrendChart();renderInputTable();}
+
+/* ═══ サマリーテーブル ═══ */
+function renderSummaryTable(){
+  const yc=getYC();
+  const cols=[
+    {data:OT25,color:"#1e293b",label:"2025年度実績",isCur:false},
+    ...KEYS.map((k,ki)=>({data:actualData[k],color:['#7F77DD','#E58B28','#E06B6B'][ki],label:`${k}実績`,isCur:k===selYear})),
+    {data:yc.tgt,color:yc.color,label:`${selYear}目標(${yc.reduction}%減)`,isCur:true},
+    ...YCFG.filter(y=>y.key!==selYear).map(y=>({data:y.tgt,color:y.color,label:`${y.key}目標(${y.reduction}%減)`,isCur:false})),
+  ];
+  document.getElementById("summaryTitle").textContent=`残業削減サマリー — ${FISCAL_YEAR}年度 ${MONTHS[FISCAL_IDX]}現在`;
+  const rows=MONTHS.map((m,i)=>{
+    const isCur=i===FISCAL_IDX;
+    const cells=cols.map(c=>{
+      const v=f(c.data[i]);
+      const isOver=c.label.includes("実績")&&c.label!=="2025年度実績"&&c.data[i]!=null&&(()=>{
+        const k=KEYS.find(k=>c.label.startsWith(k));
+        if(!k) return false;
+        const tgt=YCFG.find(y=>y.key===k)?.tgt[i];
+        return tgt!=null&&c.data[i]>tgt;
+      })();
+      return `<td style="color:${c.color};${c.isCur?"font-weight:700":""}" class="${isOver?"over-cell":""}">${v}</td>`;
+    }).join('');
+    return `<tr class="${isCur?"current-month-row":""}"><td>${m}</td>${cells}</tr>`;
+  }).join('');
+  const totals=cols.map(c=>f(sumArr(c.data.filter(v=>v!==null)),1));
+  document.getElementById("summaryTbl").innerHTML=`
+    <thead><tr><th style="text-align:left">月</th>${cols.map(c=>`<th style="color:${c.color};${c.isCur?"text-decoration:underline":""}">${c.label}</th>`).join('')}</tr></thead>
+    <tbody>${rows}<tr class="total-row"><td>合計</td>${totals.map((t,i)=>`<td style="color:${cols[i].color}">${t} h</td>`).join('')}</tr></tbody>`;
+}
+
+/* ═══ 年度タブ（入力） ═══ */
+function setInputYear(y,btn){
+  inputYear=y;
+  document.querySelectorAll(".year-input-tab").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active"); renderOTInputGrid();
+}
+
+/* ═══ 残業入力グリッド ═══ */
+function renderOTInputGrid(){
+  const yc=getIYC();
+  document.getElementById("otInputGrid").innerHTML=MONTHS.map((m,i)=>{
+    const v=actualData[inputYear][i],tgt=yc.tgt[i];
+    const isOver=v!==null&&tgt!==null&&v>tgt;
+    const valCls=v!==null?(isOver?"over-target":"has-value"):"";
+    const isCur=i===FISCAL_IDX&&inputYear===String(FISCAL_YEAR);
+    return `<div class="ot-cell">
+      <label class="${isCur?"current-month-label":""}">${isCur?"▼":""}${m}</label>
+      <input type="number" class="ot-input ${valCls}${isCur?" current-month-input":""}" id="ot_${i}"
+        value="${v??""}" min="0" max="999" step="0.25" placeholder="—"
+        oninput="updateActual(${i},this.value)">
+      <div class="tgt-hint">目標 ${tgt!=null?f(tgt,0)+"h":"—"}</div>
+    </div>`;
+  }).join("");
+  updateOTSummary();
+}
+function updateActual(idx,val){
+  actualData[inputYear][idx]=(val===""||val===null)?null:parseFloat(val);
+  const inp=document.getElementById("ot_"+idx);
+  const v=actualData[inputYear][idx],tgt=getIYC().tgt[idx],isCur=idx===FISCAL_IDX&&inputYear===String(FISCAL_YEAR);
+  inp.className="ot-input"+(isCur?" current-month-input":"")+" "+
+    (v===null?"":(tgt!==null&&v>tgt?"over-target":"has-value"));
+  updateOTSummary(); renderOTChart(); renderKPI(); renderAlerts(); renderSummaryTable(); saveData();
+}
+function updateOTSummary(){
+  const yc=getIYC(),ent=actualData[inputYear].filter(v=>v!==null),act=sumArr(ent);
+  const last=arrFindLastIndex(actualData[inputYear], v=>v!==null);
+  const tgt=last>=0?sumArr(yc.tgt.slice(0,last+1).filter(v=>v!==null)):0;
+  const ratio=tgt>0?(act/tgt*100).toFixed(1):null;
+  document.getElementById("actual_total").textContent=f(act,1)+" h";
+  document.getElementById("target_val").textContent=tgt>0?f(tgt,1)+" h（"+ent.length+"ヶ月）":"—";
+  const el=document.getElementById("achieve_val");
+  el.textContent=ratio?ratio+"%":"—";
+  el.style.color=ratio?(parseFloat(ratio)<=100?"#085041":"#A32D2D"):"#94a3b8";
+}
+function clearActualYear(){
+  actualData[inputYear]=new Array(12).fill(null);
+  renderOTInputGrid();renderOTChart();renderKPI();renderAlerts();renderSummaryTable();saveData();
+}
+
+/* ═══ メンバー管理テーブル（⑤ グループ列付き） ═══ */
+function renderInputTable(){
+  const srt=document.getElementById("inputSortSel").value;
+  const isManual=srt==="name";
+  document.getElementById("memberThead").innerHTML=`<tr>
+    ${isManual?'<th style="width:26px"></th>':''}
+    <th style="text-align:left;min-width:60px">氏名</th>
+    <th>グループ</th><th>付与数</th><th>取得数</th>
+    <th class="col-sp-hide" style="min-width:120px">取得率</th>
+    <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th><th style="width:50px"></th>
+  </tr>`;
+  let d=members.map((m,i)=>({...m,idx:i,taken:mTaken(m),achv:achvPct(mTaken(m),m.days)}));
+  if(srt==="achv_asc")   d.sort((a,b)=>a.achv-b.achv);
+  else if(srt==="achv_desc")  d.sort((a,b)=>b.achv-a.achv);
+  else if(srt==="taken_desc") d.sort((a,b)=>b.taken-a.taken);
+  let html='';
+  d.forEach((m,di)=>{
+    const a=m.achv,bc=barColor(a),rem=Math.max(0,m.days-m.taken);
+    const isExp=expandedRow===m.idx,isF=di===0,isL=di===d.length-1;
+    const gc=grpColor(m.group);
+    const dragA=isManual?`draggable="true" data-idx="${m.idx}"
+      ondragstart="onDragStart(event,${m.idx})" ondragover="onDragOver(event,${m.idx})"
+      ondrop="onDrop(event,${m.idx})" ondragend="onDragEnd()"` :'';
+    // グループ選択セル
+    const grpSel=`<select style="font-size:10px;padding:2px 18px 2px 5px;border-radius:5px" onchange="updateGroup(${m.idx},this.value)">
+      <option value="" ${!m.group?"selected":""}>未設定</option>
+      ${groups.map(g=>`<option value="${g}" ${m.group===g?"selected":""}>${g}</option>`).join('')}
+    </select>`;
+    html+=`<tr ${dragA}>
+      ${isManual?`<td style="text-align:center"><span class="drag-handle">⠿</span></td>`:''}
+      <td>
+        ${isManual?`<span class="move-cell">
+          <button class="move-btn" onclick="moveMember(${m.idx},-1)" ${isF?"disabled":""}>▲</button>
+          <button class="move-btn" onclick="moveMember(${m.idx},+1)" ${isL?"disabled":""}>▼</button>
+        </span>`:''}${m.name}
+        ${m.group?`<span class="grp-badge" style="background:${gc.bg};color:${gc.text}">${m.group}</span>`:''}
+      </td>
+      <td>${grpSel}</td>
+      <td><input class="num-input" type="number" min="1" max="40" value="${m.days}" onchange="updateDays(${m.idx},this.value)"> 日</td>
+      <td><select class="num-input" style="width:66px" onchange="updateTakenDirect(${m.idx},this.value)">${Array.from({length:m.days+1},(_,i)=>`<option value="${i}"${i===m.taken?" selected":""}>${i}日</option>`).join("")}</select></td>
+      <td class="col-sp-hide" style="text-align:left;padding-left:10px">
+        <span class="achv-bar-bg"><span class="achv-bar-fill" style="width:${a}%;background:${bc}"></span></span>
+        <span class="achv-pct" style="color:${bc}">${a}%</span>
+      </td>
+      <td class="col-sp-hide" style="font-weight:700;color:${rem===0?"#085041":"#64748b"}">${rem} 日</td>
+      <td><button class="btn btn-sm${isExp?" btn-primary":""}" onclick="toggleMonthly(${m.idx})">${isExp?"▲":"月別"}</button></td>
+      <td><button class="btn btn-danger btn-sm" onclick="openDelete(${m.idx})">削除</button></td>
+    </tr>`;
+    if(isExp){
+      const cells=MONTHS.map((mo,mi)=>`<div class="month-cell"><label>${mo}</label>
+        <input type="number" min="0" max="${m.days}" value="${m.takenMonths[mi]||0}" onchange="updateMonthly(${m.idx},${mi},this.value)">
+      </div>`).join('');
+      html+=`<tr class="month-expand-row"><td colspan="100">
+        <div class="month-grid">${cells}
+          <div class="month-total">月別合計: <strong>${m.taken}</strong> 日 ／ 付与: ${m.days}日 ／ 達成率: ${a}%</div>
+        </div></td></tr>`;
+    }
+  });
+  document.getElementById("memberTbody").innerHTML=html;
+}
+function updateGroup(idx,val){
+  members[idx].group=val; saveData(); refreshMember(); renderInputTable();
+}
+function toggleMonthly(idx){ expandedRow=expandedRow===idx?-1:idx; renderInputTable(); }
+function updateMonthly(idx,mi,val){
+  const v=Math.max(0,parseInt(val)||0);
+  members[idx].takenMonths[mi]=Math.min(v,members[idx].days);
+  const total=sumArr(members[idx].takenMonths);
+  if(total>members[idx].days)
+    members[idx].takenMonths[mi]=Math.max(0,members[idx].takenMonths[mi]-(total-members[idx].days));
+  saveData(); refreshMember(); renderInputTable();
+}
+function updateDays(idx,val){
+  members[idx].days=Math.max(1,parseInt(val)||1);
+  const total=sumArr(members[idx].takenMonths);
+  if(total>members[idx].days){
+    const scale=members[idx].days/total;
+    members[idx].takenMonths=members[idx].takenMonths.map(v=>Math.floor(v*scale));
+  }
+  saveData(); refreshMember(); renderInputTable();
+}
+
+// 取得数を合計値で直接入力したとき
+function updateTakenDirect(idx, val) {
+  const newTotal = Math.min(Math.max(0, parseInt(val)||0), members[idx].days);
+  const oldTotal = mTaken(members[idx]);
+
+  if (newTotal === 0) {
+    // ゼロクリア
+    members[idx].takenMonths = new Array(12).fill(0);
+  } else if (oldTotal === 0) {
+    // 月別データなし → 当月にまとめて設定
+    members[idx].takenMonths = new Array(12).fill(0);
+    members[idx].takenMonths[FISCAL_IDX] = newTotal;
+  } else {
+    // 既存の月別データを新しい合計に比例配分
+    const scale = newTotal / oldTotal;
+    let months = members[idx].takenMonths.map(v => Math.round(v * scale));
+    // 端数調整：最大値の月に差分を吸収
+    const diff = newTotal - sumArr(months);
+    if (diff !== 0) {
+      const maxI = months.indexOf(Math.max(...months));
+      months[maxI] = Math.max(0, months[maxI] + diff);
+    }
+    members[idx].takenMonths = months.map(v => Math.min(v, members[idx].days));
+  }
+  saveData(); refreshMember(); renderInputTable();
+}
+function addMember(){
+  const name=document.getElementById("newName").value.trim();
+  const days=Math.max(1,parseInt(document.getElementById("newDays").value)||20);
+  if(!name){alert("氏名を入力してください");return;}
+  if(members.find(m=>m.name===name)){alert("同じ名前が既に存在します");return;}
+  members.push({name,days,takenMonths:new Array(12).fill(0),group:""});
+  document.getElementById("newName").value=""; document.getElementById("newDays").value="20";
+  saveData(); refreshMember(); renderInputTable();
+}
+function moveMember(idx,dir){
+  const ni=idx+dir; if(ni<0||ni>=members.length) return;
+  [members[idx],members[ni]]=[members[ni],members[idx]];
+  saveData(); refreshMember(); renderInputTable();
+}
+function onDragStart(e,idx){
+  dragSrcIdx=idx; e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{const r=document.querySelector(`#memberTbody tr[data-idx="${idx}"]`);if(r)r.classList.add('dragging');},0);
+}
+function onDragOver(e,idx){
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('#memberTbody tr.drag-over').forEach(r=>r.classList.remove('drag-over'));
+  if(idx!==dragSrcIdx){const r=document.querySelector(`#memberTbody tr[data-idx="${idx}"]`);if(r)r.classList.add('drag-over');}
+}
+function onDrop(e,idx){
+  e.preventDefault();
+  if(dragSrcIdx===null||dragSrcIdx===idx){dragSrcIdx=null;return;}
+  const[moved]=members.splice(dragSrcIdx,1);
+  members.splice(idx>dragSrcIdx?idx-1:idx,0,moved);
+  dragSrcIdx=null; saveData(); refreshMember(); renderInputTable();
+}
+function onDragEnd(){
+  dragSrcIdx=null;
+  document.querySelectorAll('#memberTbody tr').forEach(r=>r.classList.remove('dragging','drag-over'));
+}
+function openDelete(idx){ deleteTarget=idx; document.getElementById("deleteTargetName").textContent=members[idx].name; document.getElementById("deleteModal").classList.add("open"); }
+function confirmDelete(){ if(deleteTarget>=0){members.splice(deleteTarget,1);deleteTarget=-1;} expandedRow=-1; closeModal(); saveData(); refreshMember(); renderInputTable(); }
+/* ═══ 管理者認証 ═══ */
+/* ═══ ① 管理者認証（SHA-256ハッシュ＋GAS照合） ═══ */
+// SHA-256('3150') — ソースコードにパスワード平文を書かない
+const DEFAULT_PIN_HASH = '4d364fbb3786fc31157cc1e2a2671aac0e36348ae9d6b4ba4459ee883c240fe8';
+const PIN_HASH_KEY = 'kankyoka_pin_hash'; // ⑥ localStorage に変更後ハッシュを保存
+
+let isAdmin   = false;
+let pinBuffer = '';
+
+// SHA-256ハッシュを計算（Web Crypto API）
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// 保存済みハッシュを取得（localStorage → GASの順に優先）
+function getStoredHash(){
+  return localStorage.getItem(PIN_HASH_KEY) || DEFAULT_PIN_HASH;
+}
+
+function openPinModal(){
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinModal').classList.add('open');
+}
+function enterPin(d){
+  if(pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if(pinBuffer.length === 4) setTimeout(checkPin, 120);
+}
+function deletePin(){
+  pinBuffer = pinBuffer.slice(0,-1);
+  updatePinDots();
+}
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    const dot=document.getElementById('pd'+i);
+    if(!dot) continue;
+    dot.classList.toggle('filled', i<pinBuffer.length);
+    dot.classList.remove('error');
+  }
+}
+async function checkPin(){
+  const inputHash = await sha256(pinBuffer);
+  let valid = false;
+
+  // GAS連携がある場合はGAS側で照合（⑥ パスワードをGASで管理）
+  if(gasUrl){
+    try{
+      const res = await fetch(`${gasUrl}?action=verify_pin&hash=${inputHash}&t=${Date.now()}`,{redirect:'follow'});
+      const d   = await res.json();
+      valid = d.valid === true;
+    }catch(e){
+      // GAS失敗時はローカルハッシュで照合
+      valid = inputHash === getStoredHash();
+    }
+  } else {
+    valid = inputHash === getStoredHash();
+  }
+
+  if(valid){
+    isAdmin = true;
+    closeModal();
+    applyAdminUI();
+    checkGasSetup(); // ③ GAS未設定警告
+    const tab = document.getElementById('inputNavTab');
+    if(tab) switchSection('input', tab);
+  } else {
+    const dots = document.getElementById('pinDots');
+    for(let i=0;i<4;i++){
+      const dot=document.getElementById('pd'+i);
+      if(dot){ dot.classList.add('error'); dot.classList.remove('filled'); }
+    }
+    dots.classList.remove('pin-shake');
+    void dots.offsetWidth;
+    dots.classList.add('pin-shake');
+    document.getElementById('pinError').textContent = 'パスワードが違います';
+    setTimeout(()=>{ pinBuffer=''; updatePinDots(); dots.classList.remove('pin-shake'); }, 700);
+  }
+}
+function lockAdmin(){
+  isAdmin = false;
+  applyAdminUI();
+  const tab = document.getElementById('dashboardNavTab');
+  if(tab) switchSection('dashboard', tab);
+}
+function applyAdminUI(){
+  const show = isAdmin?'':'none', hide = isAdmin?'none':'';
+  ['inputNavTab','excelBtn','printBtn','settingsBtn'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display=show;
+  });
+  document.getElementById('adminLoginBtn').style.display = hide;
+  document.getElementById('adminLockBtn').style.display  = show;
+}
+
+/* ─── ③ GAS未設定の警告 ─── */
+function checkGasSetup(){
+  const banner = document.getElementById('gasWarningBanner');
+  if(!banner) return;
+  banner.style.display = (!gasUrl && isAdmin) ? '' : 'none';
+}
+
+/* ─── ⑥ パスワード変更 ─── */
+async function changePassword(){
+  const cur = document.getElementById('changePinCurrent').value;
+  const nw  = document.getElementById('changePinNew').value;
+  const nw2 = document.getElementById('changePinNew2').value;
+  const el  = document.getElementById('changePinResult');
+  if(!cur||!nw||!nw2){ el.style.color='#dc2626'; el.textContent='すべて入力してください'; return; }
+  if(!/^\d{4}$/.test(nw)){ el.style.color='#dc2626'; el.textContent='新しいパスワードは4桁の数字で入力してください'; return; }
+  if(nw!==nw2){ el.style.color='#dc2626'; el.textContent='新しいパスワードが一致しません'; return; }
+  const curHash = await sha256(cur);
+  const newHash = await sha256(nw);
+  if(curHash !== getStoredHash()){ el.style.color='#dc2626'; el.textContent='現在のパスワードが違います'; return; }
+  // GASがあればGASにも反映
+  if(gasUrl){
+    try{
+      const res=await fetch(`${gasUrl}?action=change_pin&oldHash=${curHash}&newHash=${newHash}&t=${Date.now()}`,{redirect:'follow'});
+      const d=await res.json();
+      if(!d.success){ el.style.color='#dc2626'; el.textContent='GAS保存失敗: '+d.error; return; }
+    }catch(e){ /* GAS失敗でもローカル変更は続行 */ }
+  }
+  localStorage.setItem(PIN_HASH_KEY, newHash);
+  el.style.color='#16a34a'; el.textContent='✅ パスワードを変更しました';
+  ['changePinCurrent','changePinNew','changePinNew2'].forEach(id=>{document.getElementById(id).value='';});
+}
+
+function closeModal(){ document.querySelectorAll(".modal-bg").forEach(m=>m.classList.remove("open")); }
+
+/* ═══ Excel出力 ═══ */
+function exportExcel(){
+  const wb=XLSX.utils.book_new();
+  const otH=['月','2025年度実績(h)','2026実績(h)','2027実績(h)','2028実績(h)','2026目標(h)','2027目標(h)','2028目標(h)'];
+  const otR=MONTHS.map((m,i)=>[m,OT25[i]??'',actualData['2026'][i]??'',actualData['2027'][i]??'',actualData['2028'][i]??'',OT26_TGT[i],OT27_TGT[i],OT28_TGT[i]]);
+  otR.push(['合計',sumArr(OT25),...KEYS.map(k=>sumArr(actualData[k].filter(v=>v!==null))),sumArr(OT26_TGT),sumArr(OT27_TGT),sumArr(OT28_TGT)]);
+  const ws1=XLSX.utils.aoa_to_sheet([otH,...otR]);
+  ws1['!cols']=[{wch:6},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws1,'残業時間');
+  const lvH=['氏名','グループ','付与日数','取得日数','取得率','残日数',...MONTHS.map(m=>m+'取得')];
+  const lvR=members.map(m=>{const t=mTaken(m);return[m.name,m.group||'未設定',m.days,t,achvPct(t,m.days)+'%',Math.max(0,m.days-t),...m.takenMonths];});
+  const ws2=XLSX.utils.aoa_to_sheet([lvH,...lvR]);
+  ws2['!cols']=[{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},...MONTHS.map(()=>({wch:7}))];
+  XLSX.utils.book_append_sheet(wb,ws2,'有休取得');
+  XLSX.writeFile(wb,`環境2課_中期計画_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+/* ═══ ⑤ 印刷（PC推奨の確認付き） ═══ */
+function doPrint(){
+  // モバイル判定（⑤ 印刷推奨ルール）
+  if(/iPhone|iPad|Android/i.test(navigator.userAgent)){
+    if(!confirm('📱 モバイルからの印刷はレイアウトが崩れることがあります。\nPCからの印刷を推奨します。\n\nこのまま続けますか？')) return;
+  }
+  const main=document.querySelector("#dashboardSection .main"),topRow=document.getElementById("topRow");
+  main.style.cssText="display:grid;grid-template-columns:1fr 1fr;grid-template-areas:'kpi kpi' 'alert alert' 'ot summary' 'leave leave' 'member member';gap:5px;padding:4px 0 0;max-width:1050px";
+  topRow.style.display="contents";
+  [["kpiGrid","kpi"],["alertPanel","alert"],["otCard","ot"],["summaryCard","summary"],["leaveTrendCard","leave"],["memberCard","member"]]
+    .forEach(([id,area])=>{const el=document.getElementById(id);if(el)el.style.gridArea=area;});
+  void document.getElementById("otCard").offsetWidth;
+  const yc=getYC(); if(otChartInst) otChartInst.destroy();
+  otChartInst=new Chart(document.getElementById("otChart"),buildOTChartConfig(yc));
+  setTimeout(()=>window.print(),250);
+}
+window.addEventListener("afterprint",()=>{
+  const main=document.querySelector("#dashboardSection .main"),topRow=document.getElementById("topRow");
+  main.style.cssText=""; topRow.style.display="";
+  ["kpiGrid","alertPanel","otCard","summaryCard","leaveTrendCard","memberCard"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.gridArea="";});
+  setTimeout(renderOTChart,80);
+});
+
+/* ═══ 初期化 ═══ */
+function renderAll(){
+  renderTodayBadge(); renderKPI(); renderAlerts();
+  renderYearBtns(); renderOTLegend(); renderOTChart(); renderProgress();
+  renderMemberChart();
+  if(leaveTrendOpen) renderLeaveTrendChart(); // デフォルト非表示のためスキップ
+  renderSummaryTable();
+  updateGroupSelects();
+}
+async function init(){
+  await loadData();  // GAS/localStorageから読込（非同期）
+  renderAll();
+}
+init();
+document.querySelectorAll(".modal-bg").forEach(bg=>bg.addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal();}));
+</script>
+</body>
+</html>
