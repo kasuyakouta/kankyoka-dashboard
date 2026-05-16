@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>環境2課 中期経営計画ダッシュボード</title>
+<title>地域インフラ共創1課 中期計画ダッシュボード</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -11,10 +11,11 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
 
 /* ── Header ── */
-.hdr{background:#fff;border-bottom:1px solid #e2e8f0;padding:9px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.07);gap:10px;flex-wrap:wrap}
+.hdr{background:#fff;border-bottom:1px solid #e2e8f0;padding:9px 20px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hdr-bottom{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .hdr-left .hdr-title{font-size:15px;font-weight:700;color:#0f172a}
 .hdr-left .hdr-sub{font-size:11px;color:#64748b;margin-top:1px}
-.hdr-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .badge{font-size:11px;padding:3px 9px;border-radius:20px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:600;white-space:nowrap}
 .today-badge{font-size:11px;padding:3px 9px;border-radius:20px;background:#fefce8;color:#854F0B;border:1px solid #fde68a;font-weight:600;white-space:nowrap}
 .nav-tabs{display:flex;gap:2px;background:#f1f5f9;border-radius:9px;padding:3px}
@@ -87,6 +88,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu
 .leave-trend-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 /* 棒グラフ(2fr) + 折れ線(1fr) の2列。モバイルでは縦積みに切り替え */
 .leave-charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+/* PC: otCard内埋め込みを表示、独立カードは非表示 */
+.ot-leave-embed{display:block}
+#leaveTrendCard{display:none}
 
 /* ── Summary table ── */
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -228,21 +232,23 @@ tr.dragging{opacity:.35}
   @page{size:A3 portrait;margin:7mm 8mm}
   *,*::before,*::after{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
   body{background:#fff !important}
-  .hdr{position:static !important;box-shadow:none;padding:5px 10px;border-bottom:1px solid #e2e8f0}
+  .hdr{position:static !important;box-shadow:none;padding:5px 10px;border-bottom:1px solid #e2e8f0;gap:3px}
   .hdr-left .hdr-title{font-size:13px}.hdr-left .hdr-sub{font-size:9px}
-  .hdr-right .btn-print,.hdr-right .nav-tabs,.hdr-right .btn-success,.hdr-right .btn-warn{display:none !important}
-  .hdr-right .today-badge,.hdr-right .badge{font-size:9px;padding:2px 7px}
+  .hdr-bottom .btn-print,.hdr-bottom .nav-tabs,.hdr-bottom .btn-success,.hdr-badge-pc{display:none !important}
+  .today-badge{font-size:9px;padding:2px 7px}
   .section{display:none !important}
   #dashboardSection{display:block !important}
   .main{display:grid !important;grid-template-columns:1fr 1fr;
-    grid-template-areas:"kpi kpi" "alert alert" "ot summary" "leave leave" "member member";
+    grid-template-areas:"kpi kpi" "alert alert" "ot summary" "member member";
     gap:5px;padding:4px 0 0;max-width:100%}
   .kpi-grid{grid-area:kpi;gap:5px}
   .alert-panel{grid-area:alert}
   #topRow{display:contents}
   #otCard{grid-area:ot}
   #summaryCard{grid-area:summary}
-  #leaveTrendCard{grid-area:leave;padding:0}
+  /* 印刷ではotCard内の埋め込みグラフを表示（独立カードは非表示のまま） */
+  .ot-leave-embed{display:block !important}
+  #leaveTrendCard{display:none !important}
   #memberCard{grid-area:member}
   .kpi{padding:6px 9px;border-radius:5px}
   .kpi-label{font-size:8px;margin-bottom:2px}.kpi-val{font-size:17px}.kpi-unit{font-size:10px}
@@ -276,33 +282,54 @@ tr.dragging{opacity:.35}
   #topRow{grid-template-columns:1fr}.leave-trend-row{grid-template-columns:1fr}
   .leave-charts-grid{grid-template-columns:1fr}
   .leave-charts-grid .chart-wrap{height:160px !important}
-  .prog-grid{grid-template-columns:1fr}.ot-grid{grid-template-columns:repeat(4,1fr)}
-  .hdr{padding:9px 12px}.main{padding:10px 10px 32px}
-  /* モバイルでは取得率・残日数を非表示（横スクロール量を削減） */
+  .ot-grid{grid-template-columns:repeat(4,1fr)}
+  .main{padding:10px 10px 32px}
   .col-sp-hide{display:none}
+  /* モバイル: 埋め込みを非表示、独立カード（折りたたみ）を表示 */
+  .ot-leave-embed{display:none !important}
+  #leaveTrendCard{display:block !important}
+  /* モバイル: アラート・GAS未設定バナーを非表示 */
+  #gasWarningBanner{display:none !important}
+  #alertPanel{display:none !important}
+  /* モバイル: ヘッダーをコンパクトに */
+  .hdr{padding:8px 12px;gap:4px}
+  .hdr-left .hdr-title{font-size:13px}
+  .hdr-left .hdr-sub{display:none}           /* サブタイトル非表示 */
+  .hdr-badge-pc{display:none}                 /* 中期計画バッジ非表示 */
+  #saveStatus{display:none !important}        /* 保存ステータス非表示 */
+  .today-badge{font-size:10px;padding:2px 8px}
+  /* モバイル: ナビタブ・管理者ボタンも非表示（閲覧専用） */
+  .hdr-bottom{display:none !important}
+  /* モバイル: 年度目標進捗バーも非表示 */
+  .prog-grid{display:none !important}
+  /* モバイル: 有休月次推移カードも非表示 */
+  #leaveTrendCard{display:none !important}
+  .ot-leave-embed{display:none !important}
 }
 </style>
 </head>
 <body>
 
 <header class="hdr">
-  <div class="hdr-left">
-    <div class="hdr-title">環境2課 中期経営計画ダッシュボード</div>
-    <div class="hdr-sub">2026〜2028年度 ／ 残業削減・有休取得計画</div>
-  </div>
-  <div class="hdr-right">
+  <div class="hdr-top">
+    <div class="hdr-left">
+      <div class="hdr-title">地域インフラ共創1課　中期計画</div>
+      <div class="hdr-sub">2026〜2028年度 ／ 残業削減・有休取得計画</div>
+    </div>
     <span class="today-badge" id="todayBadge"></span>
+  </div>
+  <div class="hdr-bottom">
     <div class="nav-tabs">
       <button class="nav-tab active" id="dashboardNavTab" onclick="switchSection('dashboard',this)">📊 ダッシュボード</button>
       <button class="nav-tab" id="inputNavTab" style="display:none" onclick="switchSection('input',this)">📝 実績入力</button>
     </div>
-    <button class="btn btn-success" id="excelBtn" onclick="exportExcel()" style="display:none">📥 Excel出力</button>
-    <button class="btn btn-print" id="printBtn" onclick="doPrint()" style="display:none">🖨 印刷(A3縦)</button>
-    <button class="btn btn-sm" id="adminLoginBtn" onclick="openPinModal()" title="管理者ログイン" style="border-color:#7c3aed;color:#7c3aed">🔐 管理者</button>
-    <button class="btn btn-sm" id="adminLockBtn"  onclick="lockAdmin()"    title="管理者ロック" style="display:none;border-color:#16a34a;color:#16a34a">🔓 ロック</button>
-    <button class="btn btn-sm" id="settingsBtn" onclick="openSettings()" title="スプレッドシート連携設定" style="display:none">⚙️ 連携設定</button>
+    <button class="btn btn-success" id="excelBtn"      onclick="exportExcel()" style="display:none">📥 Excel出力</button>
+    <button class="btn btn-print"   id="printBtn"      onclick="doPrint()"     style="display:none">🖨 印刷(A3縦)</button>
+    <button class="btn btn-sm"      id="adminLoginBtn" onclick="openPinModal()" title="管理者ログイン" style="border-color:#7c3aed;color:#7c3aed">🔐 管理者</button>
+    <button class="btn btn-sm"      id="adminLockBtn"  onclick="lockAdmin()"   title="管理者ロック" style="display:none;border-color:#16a34a;color:#16a34a">🔓 ロック</button>
+    <button class="btn btn-sm"      id="settingsBtn"   onclick="openSettings()" title="スプレッドシート連携設定" style="display:none">⚙️ 連携設定</button>
     <span id="saveStatus" style="font-size:10px;color:#64748b;white-space:nowrap"></span>
-    <span class="badge">中期計画 2026-2028</span>
+    <span class="badge hdr-badge-pc">中期計画 2026-2028</span>
   </div>
 </header>
 
@@ -332,6 +359,19 @@ tr.dragging{opacity:.35}
         <div class="legend" id="otLegend"></div>
         <div class="chart-wrap" style="height:210px"><canvas id="otChart"></canvas></div>
         <div class="prog-grid" id="progGrid"></div>
+        <!-- PC時: 月次推移を左下に埋め込み表示（モバイルでは非表示） -->
+        <div id="otCardLeaveEmbed" class="ot-leave-embed">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-top:10px;border-top:1px solid #f1f5f9">
+            <div style="font-size:11px;font-weight:700;color:#0f172a">有休取得 月次推移</div>
+            <select id="leaveTrendGroupSelEmbed" onchange="renderLeaveTrendEmbed()">
+              <option value="all">全グループ</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+            <div class="chart-wrap" style="height:130px"><canvas id="leaveTrendChartEmbed"></canvas></div>
+            <div class="chart-wrap" style="height:130px"><canvas id="leaveRateChartEmbed"></canvas></div>
+          </div>
+        </div>
       </div>
 
       <!-- 有休グラフ -->
@@ -854,20 +894,61 @@ function toggleLeaveTrend(){
   document.getElementById('leaveTrendChevron')?.classList.toggle('open',leaveTrendOpen);
   if(leaveTrendOpen) renderLeaveTrendChart(); // 展開時のみ描画
 }
+/* ═══ アラート確認済み管理 ═══ */
+const DISMISSED_KEY = 'kankyoka_dismissed_alerts';
+function getDismissed(){ try{ return JSON.parse(localStorage.getItem(DISMISSED_KEY)||'[]'); }catch(e){ return []; } }
+function dismissAlert(id){
+  const list = getDismissed();
+  if(!list.includes(id)){ list.push(id); localStorage.setItem(DISMISSED_KEY, JSON.stringify(list)); }
+  renderAlerts();
+}
+function resetDismissed(){ localStorage.removeItem(DISMISSED_KEY); renderAlerts(); }
+
 function renderAlerts(){
+  const dismissed = getDismissed();
   const lowM=members.filter(m=>{const t=mTaken(m);return m.days>0&&achvPct(t,m.days)<50&&(m.days-t)>0;});
   const overO=KEYS.flatMap(k=>{
     const yc=YCFG.find(y=>y.key===k);
     return actualData[k].map((v,i)=>v!==null&&yc.tgt[i]!==null&&v>yc.tgt[i]?{year:k,month:MONTHS[i],actual:v,target:yc.tgt[i]}:null).filter(Boolean);
   });
-  const alerts=[];
-  overO.forEach(o=>alerts.push({type:"danger",icon:"🔴",msg:`残業超過: ${o.year}年度 ${o.month} — 実績 ${f(o.actual)}h（目標 ${f(o.target)}h、超過 +${f(o.actual-o.target)}h）`}));
-  lowM.forEach(m=>{const t=mTaken(m);alerts.push({type:"warn",icon:"🟡",msg:`有休取得率低: ${m.name}（${t}日/${m.days}日付与 = ${achvPct(t,m.days)}%）`});});
-  const cnt=alerts.length;
-  const badge=cnt>0?`<span style="background:#ef4444;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px">${cnt}</span>`
-    :`<span style="background:#86efac;color:#166534;border-radius:20px;padding:1px 7px;font-size:10px">0</span>`;
-  const body=cnt===0?`<div class="alert-item ok"><span>✅</span>現在アラートはありません</div>`
-    :alerts.map(a=>`<div class="alert-item ${a.type}"><span>${a.icon}</span>${a.msg}</div>`).join('');
+  const allAlerts=[];
+  overO.forEach(o=>{
+    const id=`ot_${o.year}_${o.month}`;
+    allAlerts.push({id,type:"danger",icon:"🔴",msg:`残業超過: ${o.year}年度 ${o.month} — 実績 ${f(o.actual)}h（目標 ${f(o.target)}h、超過 +${f(o.actual-o.target)}h）`});
+  });
+  lowM.forEach(m=>{
+    const t=mTaken(m);
+    const id=`leave_${m.name}`;
+    allAlerts.push({id,type:"warn",icon:"🟡",msg:`有休取得率低: ${m.name}（${t}日/${m.days}日付与 = ${achvPct(t,m.days)}%）`});
+  });
+
+  // 確認済みを除いたアクティブなアラート
+  const alerts = allAlerts.filter(a=>!dismissed.includes(a.id));
+  const hiddenCnt = allAlerts.length - alerts.length;
+  const cnt = alerts.length;
+
+  const badge = cnt>0
+    ? `<span style="background:#ef4444;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px">${cnt}</span>`
+    : `<span style="background:#86efac;color:#166534;border-radius:20px;padding:1px 7px;font-size:10px">0</span>`;
+
+  const dismissBtn = `<button onclick="event.stopPropagation();this.blur();resetDismissed()"
+    style="margin-left:auto;font-size:9px;padding:2px 7px;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc;color:#64748b;cursor:pointer"
+    title="確認済みアラートをすべて再表示">再表示</button>`;
+
+  const body = cnt===0 && allAlerts.length===0
+    ? `<div class="alert-item ok"><span>✅</span>現在アラートはありません</div>`
+    : cnt===0
+      ? `<div class="alert-item ok"><span>✅</span>すべて確認済みです（${hiddenCnt}件）${dismissBtn}</div>`
+      : alerts.map(a=>`
+          <div class="alert-item ${a.type}" style="justify-content:space-between">
+            <span style="display:flex;align-items:center;gap:8px"><span>${a.icon}</span>${a.msg}</span>
+            <button onclick="dismissAlert('${a.id}')"
+              title="確認済みにして非表示"
+              style="flex-shrink:0;margin-left:8px;background:none;border:none;cursor:pointer;font-size:14px;opacity:.5;line-height:1"
+              onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5">✕</button>
+          </div>`).join('')
+        + (hiddenCnt>0 ? `<div style="font-size:10px;color:#94a3b8;padding:4px 2px">${hiddenCnt}件を確認済みとして非表示 ${dismissBtn}</div>` : '');
+
   document.getElementById("alertPanel").innerHTML=`
     <div class="alert-header" onclick="toggleAlert()">
       <div class="alert-title">${cnt>0?"⚠️":"📋"} アラート ${badge}</div>
@@ -972,70 +1053,73 @@ function renderProgress(){
 }
 
 /* ═══ 有休取得 月次推移グラフ ═══ */
+let leaveTrendInstEmbed=null, leaveRateInstEmbed=null; // PC埋め込み用インスタンス
+
 function getLeaveGroupFilter(){
-  return document.getElementById("leaveTrendGroupSel")?.value||"all";
+  // PC時は埋め込みセレクト、モバイル時は独立カードのセレクトを参照
+  const isPC = window.innerWidth > 760;
+  return (isPC
+    ? document.getElementById("leaveTrendGroupSelEmbed")
+    : document.getElementById("leaveTrendGroupSel"))?.value || "all";
 }
+
+// モバイル用（折りたたみ展開時）
 function renderLeaveTrendChart(){
-  if(!leaveTrendOpen) return; // 非表示時はスキップ
-  const grpF=getLeaveGroupFilter();
-  const filtered=grpF==="all"?members:members.filter(m=>m.group===grpF);
-  if(!filtered.length){
-    ["leaveTrendChart","leaveRateChart"].forEach(id=>{
-      const c=document.getElementById(id);if(c) c.getContext("2d").clearRect(0,0,c.width,c.height);
-    });
-    return;
-  }
-  const totalDays=sumArr(filtered.map(m=>m.days));
-  // 月別チーム取得数（accumulated）
-  const monthlyTaken=MONTHS.map((_,mi)=>sumArr(filtered.map(m=>m.takenMonths[mi]||0)));
-  const cumulTaken=monthlyTaken.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
-  const cumulRate=cumulTaken.map(c=>totalDays>0?+(c/totalDays*100).toFixed(1):0);
+  if(!leaveTrendOpen) return;
+  const grpF = document.getElementById("leaveTrendGroupSel")?.value || "all";
+  _renderLeavePair(grpF, "leaveTrendChart", "leaveRateChart", leaveTrendInst, leaveRateInst, 9);
+}
 
-  // 積み上げ棒グラフ（月別取得数）
-  if(leaveTrendInst) leaveTrendInst.destroy();
-  leaveTrendInst=new Chart(document.getElementById("leaveTrendChart"),{
+// PC埋め込み用（常時描画）
+function renderLeaveTrendEmbed(){
+  const grpF = document.getElementById("leaveTrendGroupSelEmbed")?.value || "all";
+  const result = _renderLeavePair(grpF, "leaveTrendChartEmbed", "leaveRateChartEmbed", leaveTrendInstEmbed, leaveRateInstEmbed, 8);
+  leaveTrendInstEmbed = result.bar;
+  leaveRateInstEmbed  = result.line;
+}
+
+// 共通描画ロジック
+function _renderLeavePair(grpF, barId, lineId, oldBar, oldLine, fontSize){
+  const filtered = grpF==="all" ? members : members.filter(m=>m.group===grpF);
+  const totalDays = sumArr(filtered.map(m=>m.days));
+  const monthlyTaken = MONTHS.map((_,mi)=>sumArr(filtered.map(m=>m.takenMonths[mi]||0)));
+  const cumulTaken = monthlyTaken.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
+  const cumulRate = cumulTaken.map(c=>totalDays>0?+(c/totalDays*100).toFixed(1):0);
+  const xTick = {font:{size:fontSize},color:"#64748b",maxRotation:45,autoSkip:true,maxTicksLimit:6,
+    callback:(val,i)=>MONTHS[i].replace("月","")+"月"};
+
+  if(oldBar) oldBar.destroy();
+  const bar = new Chart(document.getElementById(barId),{
     type:"bar",
-    data:{
-      labels:MONTHS,
-      datasets:[{label:"月別取得数",data:monthlyTaken,backgroundColor:"#185FA590",borderRadius:3,maxBarThickness:20}]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
+    data:{labels:MONTHS,datasets:[{label:"月別取得数",data:monthlyTaken,backgroundColor:"#185FA590",borderRadius:3,maxBarThickness:16}]},
+    options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>"取得: "+ctx.raw+"日"}}},
-      scales:{
-        x:{ticks:{font:{size:9},color:"#64748b",maxRotation:45,autoSkip:true,maxTicksLimit:6,
-             callback:(val,i)=>MONTHS[i].replace("月","")+"月"},grid:{color:"#f1f5f9"}},
-        y:{beginAtZero:true,ticks:{font:{size:9},color:"#64748b",callback:v=>v+"日"},grid:{color:"#f1f5f9"}}
-      }
-    }
+      scales:{x:{ticks:xTick,grid:{color:"#f1f5f9"}},
+        y:{beginAtZero:true,ticks:{font:{size:fontSize},color:"#64748b",callback:v=>v+"日"},grid:{color:"#f1f5f9"}}}}
   });
 
-  // 累積取得率折れ線
-  if(leaveRateInst) leaveRateInst.destroy();
-  leaveRateInst=new Chart(document.getElementById("leaveRateChart"),{
+  if(oldLine) oldLine.destroy();
+  const line = new Chart(document.getElementById(lineId),{
     type:"line",
-    data:{
-      labels:MONTHS,
-      datasets:[
-        {label:"累積取得率",data:cumulRate,borderColor:"#185FA5",backgroundColor:"#185FA520",fill:true,borderWidth:2,pointRadius:2,tension:.3},
-        {label:"目標(80%)",data:new Array(12).fill(80),borderColor:"#16a34a",borderDash:[5,3],borderWidth:1.5,pointRadius:0}
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
+    data:{labels:MONTHS,datasets:[
+      {label:"累積取得率",data:cumulRate,borderColor:"#185FA5",backgroundColor:"#185FA520",fill:true,borderWidth:2,pointRadius:2,tension:.3},
+      {label:"目標(80%)",data:new Array(12).fill(80),borderColor:"#16a34a",borderDash:[5,3],borderWidth:1.5,pointRadius:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+": "+ctx.raw+"%"}}},
-      scales:{
-        x:{ticks:{font:{size:9},color:"#64748b",maxRotation:45,autoSkip:true,maxTicksLimit:6,
-             callback:(val,i)=>MONTHS[i].replace("月","")+"月"},grid:{color:"#f1f5f9"}},
-        y:{min:0,max:110,ticks:{font:{size:9},color:"#64748b",maxTicksLimit:5,callback:v=>v+"%"},grid:{color:"#f1f5f9"}}
-      }
-    }
+      scales:{x:{ticks:xTick,grid:{color:"#f1f5f9"}},
+        y:{min:0,max:110,ticks:{font:{size:fontSize},color:"#64748b",maxTicksLimit:5,callback:v=>v+"%"},grid:{color:"#f1f5f9"}}}}
   });
+
+  // モバイル用インスタンスを更新
+  if(barId==="leaveTrendChart")   { leaveTrendInst=bar; leaveRateInst=line; }
+  return {bar, line};
 }
 
 /* ═══ ⑤ グループ管理 ═══ */
 function updateGroupSelects(){
-  ["groupFilterSel","leaveTrendGroupSel"].forEach(id=>{
+  // ダッシュボード有休グラフフィルター・月次推移（独立カード・PC埋め込み両方）を更新
+  ["groupFilterSel","leaveTrendGroupSel","leaveTrendGroupSelEmbed"].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     const cur=el.value;
     el.innerHTML='<option value="all">全グループ</option>'+
@@ -1115,7 +1199,14 @@ function renderMemberChart(){
     <div class="cbar-axis-row"><div class="cbar-name-spc"></div><div class="cbar-axis">${ticks}</div><div class="cbar-right-spc"></div></div>
   </div>`;
 }
-function refreshMember(){renderKPI();renderAlerts();renderMemberChart();if(leaveTrendOpen)renderLeaveTrendChart();renderInputTable();}
+function refreshMember(){
+  renderKPI(); renderAlerts(); renderMemberChart();
+  // PC: 常時表示の埋め込みグラフを更新
+  if(window.innerWidth > 760) renderLeaveTrendEmbed();
+  // モバイル: 展開中のみ更新
+  else if(leaveTrendOpen) renderLeaveTrendChart();
+  renderInputTable();
+}
 
 /* ═══ サマリーテーブル ═══ */
 function renderSummaryTable(){
@@ -1495,20 +1586,22 @@ function doPrint(){
     if(!confirm('📱 モバイルからの印刷はレイアウトが崩れることがあります。\nPCからの印刷を推奨します。\n\nこのまま続けますか？')) return;
   }
   const main=document.querySelector("#dashboardSection .main"),topRow=document.getElementById("topRow");
-  main.style.cssText="display:grid;grid-template-columns:1fr 1fr;grid-template-areas:'kpi kpi' 'alert alert' 'ot summary' 'leave leave' 'member member';gap:5px;padding:4px 0 0;max-width:1050px";
+  main.style.cssText="display:grid;grid-template-columns:1fr 1fr;grid-template-areas:'kpi kpi' 'alert alert' 'ot summary' 'member member';gap:5px;padding:4px 0 0;max-width:1050px";
   topRow.style.display="contents";
-  [["kpiGrid","kpi"],["alertPanel","alert"],["otCard","ot"],["summaryCard","summary"],["leaveTrendCard","leave"],["memberCard","member"]]
+  [["kpiGrid","kpi"],["alertPanel","alert"],["otCard","ot"],["summaryCard","summary"],["memberCard","member"]]
     .forEach(([id,area])=>{const el=document.getElementById(id);if(el)el.style.gridArea=area;});
   void document.getElementById("otCard").offsetWidth;
   const yc=getYC(); if(otChartInst) otChartInst.destroy();
   otChartInst=new Chart(document.getElementById("otChart"),buildOTChartConfig(yc));
-  setTimeout(()=>window.print(),250);
+  // 埋め込み月次推移も再描画（印刷用サイズで出力）
+  renderLeaveTrendEmbed();
+  setTimeout(()=>window.print(),300);
 }
 window.addEventListener("afterprint",()=>{
   const main=document.querySelector("#dashboardSection .main"),topRow=document.getElementById("topRow");
   main.style.cssText=""; topRow.style.display="";
-  ["kpiGrid","alertPanel","otCard","summaryCard","leaveTrendCard","memberCard"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.gridArea="";});
-  setTimeout(renderOTChart,80);
+  ["kpiGrid","alertPanel","otCard","summaryCard","memberCard"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.gridArea="";});
+  setTimeout(()=>{ renderOTChart(); renderLeaveTrendEmbed(); },80);
 });
 
 /* ═══ 初期化 ═══ */
@@ -1516,7 +1609,9 @@ function renderAll(){
   renderTodayBadge(); renderKPI(); renderAlerts();
   renderYearBtns(); renderOTLegend(); renderOTChart(); renderProgress();
   renderMemberChart();
-  if(leaveTrendOpen) renderLeaveTrendChart(); // デフォルト非表示のためスキップ
+  // PC: 埋め込みグラフを常時描画。モバイル: 展開時のみ
+  if(window.innerWidth > 760) renderLeaveTrendEmbed();
+  else if(leaveTrendOpen) renderLeaveTrendChart();
   renderSummaryTable();
   updateGroupSelects();
 }
