@@ -667,7 +667,9 @@ const INIT_MEMBERS = [
 
 /* ═══ GAS連携 + localStorage ═══ */
 const STORE_KEY = 'kankyoka_v3';
-const GAS_KEY   = 'kankyoka_gas_url';
+const GAS_KEY       = 'kankyoka_gas_url';
+// 全デバイスで自動接続（localStorage未設定の端末も自動でGASに繋がる）
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwKYdjPlgVScVP5vM6tuRhnBdk9fn64yiEXWwy04l48C9RNCkZKvBboFzMbmQlqFxdT0A/exec';
 function mkInitActual(){ return {'2026':new Array(12).fill(null),'2027':new Array(12).fill(null),'2028':new Array(12).fill(null)}; }
 let actualData = mkInitActual();
 let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
@@ -718,7 +720,7 @@ function applyData(d){
 
 // 初期読込（GAS優先 → localStorage fallback）
 async function loadData(){
-  gasUrl=localStorage.getItem(GAS_KEY)||'';
+  gasUrl=localStorage.getItem(GAS_KEY) || DEFAULT_GAS_URL;
   if(gasUrl){
     setSaveStatus('loading');
     try{
