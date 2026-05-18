@@ -1758,13 +1758,13 @@ function renderSalesKPI(){
   const u2sum = sumArr(salesData[yr]?.unit2?.filter(v=>v!==null)||[]);
   const u3sum = sumArr(salesData[yr]?.unit3?.filter(v=>v!==null)||[]);
   document.getElementById('salesKpiGrid').innerHTML=[
-    {label:`ユニット2 当月（${MONTHS[mi]}）`,val:u2c!=null?u2c.toLocaleString():'—',unit:'万円',
-     sub:`${yr}年度累計: ${u2sum>0?u2sum.toLocaleString():'—'}万円`,color:U2_COLOR,trend:yoyBadge(u2c,u2p)},
-    {label:`ユニット3 当月（${MONTHS[mi]}）`,val:u3c!=null?u3c.toLocaleString():'—',unit:'万円',
-     sub:`${yr}年度累計: ${u3sum>0?u3sum.toLocaleString():'—'}万円`,color:U3_COLOR,trend:yoyBadge(u3c,u3p)},
+    {label:`ユニット2 当月（${MONTHS[mi]}）`,val:fmtOkuVal(u2c),unit:fmtOkuUnit(u2c),
+     sub:`${yr}年度累計: ${u2sum>0?fmtOku(u2sum):'—'}`,color:U2_COLOR,trend:yoyBadge(u2c,u2p)},
+    {label:`ユニット3 当月（${MONTHS[mi]}）`,val:fmtOkuVal(u3c),unit:fmtOkuUnit(u3c),
+     sub:`${yr}年度累計: ${u3sum>0?fmtOku(u3sum):'—'}`,color:U3_COLOR,trend:yoyBadge(u3c,u3p)},
     {label:`合算 当月（${MONTHS[mi]}）`,
-     val:(u2c!=null&&u3c!=null)?(u2c+u3c).toLocaleString():'—',unit:'万円',
-     sub:`${yr}年度累計: ${(u2sum+u3sum)>0?(u2sum+u3sum).toLocaleString():'—'}万円`,color:TOT_COLOR,
+     val:fmtOkuVal(u2c!=null&&u3c!=null?u2c+u3c:null),unit:fmtOkuUnit(u2c!=null&&u3c!=null?u2c+u3c:null),
+     sub:`${yr}年度累計: ${(u2sum+u3sum)>0?fmtOku(u2sum+u3sum):'—'}`,color:TOT_COLOR,
      trend:yoyBadge(u2c!=null&&u3c!=null?u2c+u3c:null,u2p!=null&&u3p!=null?u2p+u3p:null)},
   ].map(k=>`<div class="kpi">
     <div class="kpi-label">${k.label}</div>
@@ -1835,14 +1835,14 @@ function renderSalesChart(){
             label:ctx=>{
               const v=ctx.raw;
               if(ctx.dataset.yAxisID==='y2')
-                return '累計: '+(v!=null?v.toLocaleString()+'万円':'—');
-              return ctx.dataset.label+': '+(v!=null?v.toLocaleString()+'万円':'—');
+                return '累計: '+(v!=null?fmtOku(v):'—');
+              return ctx.dataset.label+': '+(v!=null?fmtOku(v):'—');
             },
             afterBody(items){
               const bars=items.filter(it=>it.dataset.stack==='sales');
               if(bars.length<2) return [];
               const tot=bars.reduce((s,it)=>s+(it.raw??0),0);
-              return tot>0?['─────','当月合算: '+tot.toLocaleString()+'万円']:[];
+              return tot>0?['─────','当月合算: '+fmtOku(tot)]:[];
             }
           }
         }
@@ -1928,8 +1928,8 @@ function renderSalesSummary(){
   ];
 
   const rows=[
-    {label:'年度目標',    fn:c=>c.tg!=null?c.tg.toLocaleString()+'万円':'未設定',color:c=>'#0f172a',bg:()=>''},
-    {label:'実績累計',    fn:c=>c.act>0?c.act.toLocaleString()+'万円':'—',       color:c=>c.color,  bg:()=>''},
+    {label:'年度目標',    fn:c=>c.tg!=null?fmtOku(c.tg):'未設定',color:c=>'#0f172a',bg:()=>''},
+    {label:'実績累計',    fn:c=>c.act>0?fmtOku(c.act):'—',       color:c=>c.color,  bg:()=>''},
     {label:'達成率',      fn:c=>{const r=c.tg&&c.act?c.act/c.tg*100:null;return fmtRate(r);},
       color:c=>{const r=c.tg&&c.act?c.act/c.tg*100:null;return rateColor(r);},
       bg:c=>{const r=c.tg&&c.act?c.act/c.tg*100:null;return rateBg(r);}},
@@ -1952,7 +1952,7 @@ function renderSalesSummary(){
             <div class="donut-overlay" style="color:${c.color}">${pct}${r!=null?'%':''}<br><span style="font-size:8px;color:#64748b">達成率</span></div>
           </div>
           <div style="font-size:10px;font-weight:700;color:${c.color};margin-top:4px">${c.label}</div>
-          <div style="font-size:9px;color:#94a3b8">${c.tg!=null?c.tg.toLocaleString()+'万円目標':'目標未設定'}</div>
+          <div style="font-size:9px;color:#94a3b8">${c.tg!=null?fmtOku(c.tg)+'目標':'目標未設定'}</div>
         </div>`;
       }).join('')}
     </div>
@@ -1991,6 +1991,27 @@ function renderSalesSummary(){
     });
   });
 }
+/* ── 売上金額フォーマット（10,000万円以上 → 億円自動切替） ── */
+function fmtOku(v){
+  if(v==null||v===''||isNaN(Number(v))) return '—';
+  const n=Number(v);
+  if(Math.abs(n)>=10000){
+    const oku=n/10000;
+    return parseFloat(oku.toFixed(1))+'億円';
+  }
+  return n.toLocaleString()+'万円';
+}
+function fmtOkuVal(v){
+  if(v==null||isNaN(Number(v))) return '—';
+  const n=Number(v);
+  if(Math.abs(n)>=10000) return parseFloat((n/10000).toFixed(1))+'億';
+  return n.toLocaleString();
+}
+function fmtOkuUnit(v){
+  if(v==null||isNaN(Number(v))) return '万円';
+  return Math.abs(Number(v))>=10000?'円':'万円';
+}
+
 function setSalesInputYear(y,btn){
   salesInputYear=y;
   document.querySelectorAll('.year-input-tab[id^="stab"]').forEach(b=>b.classList.remove('active'));
@@ -2032,9 +2053,9 @@ function updateSalesSummary(){
   const yr=salesInputYear;
   const u2=sumArr((salesData[yr]?.unit2||[]).filter(v=>v!==null));
   const u3=sumArr((salesData[yr]?.unit3||[]).filter(v=>v!==null));
-  document.getElementById('salesU2Total').textContent=u2>0?u2.toLocaleString()+' 万円':'— 万円';
-  document.getElementById('salesU3Total').textContent=u3>0?u3.toLocaleString()+' 万円':'— 万円';
-  document.getElementById('salesTotalAll').textContent=(u2+u3)>0?(u2+u3).toLocaleString()+' 万円':'— 万円';
+  document.getElementById('salesU2Total').textContent=u2>0?fmtOku(u2):'— 万円';
+  document.getElementById('salesU3Total').textContent=u3>0?fmtOku(u3):'— 万円';
+  document.getElementById('salesTotalAll').textContent=(u2+u3)>0?fmtOku(u2+u3):'— 万円';
 }
 function clearSalesYear(){
   salesData[salesInputYear]={unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
