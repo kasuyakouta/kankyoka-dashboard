@@ -802,8 +802,8 @@ function applyData(d){
     const sy=mkInitSales();
     ['2025','2026','2027','2028'].forEach(k=>{
       if(d.salesData[k]){
-        if(d.salesData[k].unit2) sy[k].unit2=d.salesData[k].unit2;
-        if(d.salesData[k].unit3) sy[k].unit3=d.salesData[k].unit3;
+        if(Array.isArray(d.salesData[k].unit2)) sy[k].unit2=d.salesData[k].unit2;
+        if(Array.isArray(d.salesData[k].unit3)) sy[k].unit3=d.salesData[k].unit3;
       }
     });
     salesData=sy;
@@ -831,8 +831,9 @@ async function loadData(){
       const d=await res.json();
       if(!d.error&&(d.actualData||d.members)){
         applyData(d);
-        // localStorageにも同期
-        try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){}
+        // localStorageにも同期（salesTargetsが欠けている場合は現在の値を補完）
+        const toStore = Object.assign({salesTargets}, d);
+        try{ localStorage.setItem(STORE_KEY,JSON.stringify(toStore)); }catch(e){}
         setSaveStatus('saved');
         setTimeout(()=>setSaveStatus('idle'),2000);
         return;
@@ -1262,12 +1263,14 @@ function addGroup(){
   if(groups.includes(name)){ alert("同じ名前が既に存在します"); return; }
   groups.push(name); document.getElementById("newGroupName").value="";
   saveData(); renderGroupUI(); updateGroupSelects(); renderInputTable();
+  if(window.innerWidth>760) renderLeaveTrendEmbed();
 }
 function deleteGroup(name){
   if(!confirm(`「${name}」を削除しますか？\n（このグループを設定しているメンバーは未設定になります）`)) return;
   groups=groups.filter(g=>g!==name);
   members.forEach(m=>{ if(m.group===name) m.group=""; });
   saveData(); renderGroupUI(); updateGroupSelects(); renderInputTable(); refreshMember();
+  if(window.innerWidth>760) renderLeaveTrendEmbed();
 }
 
 /* ═══ CSS棒グラフ（有休） ═══ */
@@ -1409,7 +1412,7 @@ function updateOTSummary(){
 }
 function clearActualYear(){
   actualData[inputYear]=new Array(12).fill(null);
-  renderOTInputGrid();renderOTChart();renderKPI();renderAlerts();renderSummaryTable();saveData();
+  updateOTSummary(); renderOTInputGrid(); renderOTChart(); renderKPI(); renderAlerts(); renderSummaryTable(); saveData();
 }
 
 /* ═══ メンバー管理テーブル（⑤ グループ列付き） ═══ */
@@ -1701,7 +1704,7 @@ function exportExcel(){
   const ws2=XLSX.utils.aoa_to_sheet([lvH,...lvR]);
   ws2['!cols']=[{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},...MONTHS.map(()=>({wch:7}))];
   XLSX.utils.book_append_sheet(wb,ws2,'有休取得');
-  XLSX.writeFile(wb,`環境2課_中期計画_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb,`地域インフラ共創1課_中期計画_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 /* ═══ ⑤ 印刷（PC推奨の確認付き） ═══ */
@@ -1884,7 +1887,7 @@ function renderSalesChart(){
 function updateSalesTarget(unit, val){
   if(!salesTargets[salesInputYear]) salesTargets[salesInputYear]={unit2:null,unit3:null,total:null};
   salesTargets[salesInputYear][unit]=(val===''||val===null)?null:parseFloat(val);
-  saveData(); renderSalesSummary();
+  saveData(); renderSalesKPI(); renderSalesSummary();
 }
 function renderSalesTargetInputs(){
   const t=salesTargets[salesInputYear]||{unit2:null,unit3:null,total:null};
