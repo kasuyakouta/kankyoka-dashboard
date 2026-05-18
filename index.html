@@ -1907,8 +1907,13 @@ function renderSalesTargetInputs(){
 }
 
 /* ── 年度サマリーテーブル（ダッシュボード） ── */
+let _salesDonutInsts = {}; // ドーナツチャートインスタンス管理
+
 function renderSalesSummary(){
   const el=document.getElementById('salesSummary'); if(!el) return;
+  // 既存ドーナツインスタンスを先に破棄（Canvas再利用エラー防止）
+  Object.values(_salesDonutInsts).forEach(c=>{try{c.destroy();}catch(e){}});
+  _salesDonutInsts={};
   const yr=selSalesYear;
   const py=String(parseInt(yr)-1);
   const sd=salesData[yr]||{unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
@@ -1988,13 +1993,12 @@ function renderSalesSummary(){
       </table>
     </div>`;
 
-  // ③ ドーナツ描画
+  // ③ ドーナツ描画（インスタンスを管理して確実に破棄・再生成）
   cols.forEach(c=>{
     const r=c.tg&&c.act?Math.min(100,c.act/c.tg*100):0;
     const canvas=document.getElementById('donut_'+c.label.replace(/\s/g,'_'));
     if(!canvas) return;
-    const old=Chart.getChart(canvas); if(old) old.destroy();
-    new Chart(canvas,{
+    _salesDonutInsts[c.label]=new Chart(canvas,{
       type:'doughnut',
       data:{datasets:[{
         data:[r,Math.max(0,100-r)],
@@ -2060,7 +2064,7 @@ function updateSales(unit,idx,val){
       +' '+(salesData[salesInputYear][unit][idx]!==null?'has-value':'');
   }
   updateSalesSummary();
-  renderSalesChart(); renderSalesKPI();
+  renderSalesChart(); renderSalesKPI(); renderSalesSummary();
   saveData();
 }
 function updateSalesSummary(){
@@ -2073,7 +2077,7 @@ function updateSalesSummary(){
 }
 function clearSalesYear(){
   salesData[salesInputYear]={unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
-  renderSalesInputGrid(); renderSalesChart(); renderSalesKPI(); saveData();
+  renderSalesInputGrid(); renderSalesChart(); renderSalesKPI(); renderSalesSummary(); saveData();
 }
 
 function renderAll(){
