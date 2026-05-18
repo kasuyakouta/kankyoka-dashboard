@@ -354,7 +354,7 @@ tr.dragging{opacity:.35}
     <div class="kpi-grid" id="salesKpiGrid" style="grid-template-columns:repeat(3,1fr)"></div>
 
     <!-- GAS未設定警告バナー -->
-    <div id="gasWarningBanner" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px 16px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:10px">
+    <div id="gasWarningBanner" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px 16px;font-size:11px;color:#92400e;align-items:center;gap:10px">
       <span style="font-size:16px">⚠️</span>
       <div>
         <strong>スプレッドシート未連携</strong> — データはこの端末にのみ保存されています。<br>
@@ -1657,7 +1657,7 @@ function applyAdminUI(){
 function checkGasSetup(){
   const banner = document.getElementById('gasWarningBanner');
   if(!banner) return;
-  banner.style.display = (!gasUrl && isAdmin) ? '' : 'none';
+  banner.style.display = (!gasUrl && isAdmin) ? 'flex' : 'none';
 }
 
 /* ─── ⑥ パスワード変更 ─── */
