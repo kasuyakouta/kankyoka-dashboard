@@ -189,6 +189,14 @@ tr.dragging{opacity:.35}
 .group-add-row input{padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;width:100px}
 .group-add-row input:focus{outline:none;border-color:#185FA5}
 
+/* ── ② KPIセクションラベル ── */
+.kpi-section-lbl{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:0 2px;margin-bottom:-4px}
+/* ── ③ 達成率ドーナツ ── */
+.donut-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 6px}
+.donut-item{text-align:center}
+.donut-wrap{position:relative;width:76px;height:76px;margin:0 auto}
+.donut-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:11px;font-weight:700;line-height:1.2;text-align:center}
+
 /* CSS棒グラフ */
 #memberWrap{width:100%;overflow:hidden}
 .cbar-chart{width:100%}
@@ -340,9 +348,12 @@ tr.dragging{opacity:.35}
 <!-- ダッシュボード -->
 <div id="dashboardSection" class="section active">
   <div class="main">
+    <div class="kpi-section-lbl">📉 残業・有休</div>
     <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="kpi-section-lbl">💰 売上実績</div>
+    <div class="kpi-grid" id="salesKpiGrid" style="grid-template-columns:repeat(3,1fr)"></div>
 
-    <!-- ③ GAS未設定警告バナー（管理者ログイン時のみ表示） -->
+    <!-- GAS未設定警告バナー -->
     <div id="gasWarningBanner" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px 16px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:10px">
       <span style="font-size:16px">⚠️</span>
       <div>
@@ -430,6 +441,24 @@ tr.dragging{opacity:.35}
       </div>
     </div>
 
+    <!-- 売上KPI -->
+    <div class="kpi-grid" id="salesKpiGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+
+    <!-- 売上グラフ -->
+    <div class="card" id="salesCard">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:3px;flex-wrap:wrap;gap:4px">
+        <div>
+          <div class="card-title">売上実績（万円）</div>
+          <div class="card-sub">ユニット2・ユニット3・合算の月次推移 ／ 2025年度比較</div>
+        </div>
+        <div class="btn-group" id="salesYearBtns"></div>
+      </div>
+      <div class="legend" id="salesLegend"></div>
+      <div class="chart-wrap" style="height:200px"><canvas id="salesChart"></canvas></div>
+      <!-- 年度サマリーテーブル -->
+      <div id="salesSummary" style="margin-top:10px"></div>
+    </div>
+
     <!-- サマリーテーブル -->
     <div class="card" id="summaryCard">
       <div class="card-title" style="margin-bottom:7px" id="summaryTitle"></div>
@@ -460,6 +489,41 @@ tr.dragging{opacity:.35}
         <div class="ot-sum-item">入力済合計: <strong id="actual_total" style="color:#185FA5">0.0 h</strong></div>
         <div class="ot-sum-item">対応月の目標: <strong id="target_val" style="color:#0F6E56">— h</strong></div>
         <div class="ot-sum-item">目標対比: <strong id="achieve_val">—</strong></div>
+      </div>
+    </div>
+
+    <!-- 売上実績入力 -->
+    <div class="card">
+      <div class="input-card-head">
+        <div>
+          <div class="card-title">③ 売上実績 入力（万円）</div>
+          <div style="font-size:10px;color:#64748b;margin-top:1px">ユニット2・ユニット3の月別売上を入力。2025年度が比較基準になります。</div>
+        </div>
+        <button class="btn btn-sm" onclick="clearSalesYear()">🗑 この年度をクリア</button>
+      </div>
+      <!-- 年度タブ -->
+      <div class="year-input-tabs">
+        <button class="year-input-tab" id="stab2025" onclick="setSalesInputYear('2025',this)">2025年度</button>
+        <button class="year-input-tab" id="stab2026" onclick="setSalesInputYear('2026',this)">2026年度</button>
+        <button class="year-input-tab" id="stab2027" onclick="setSalesInputYear('2027',this)">2027年度</button>
+        <button class="year-input-tab" id="stab2028" onclick="setSalesInputYear('2028',this)">2028年度</button>
+      </div>
+      <!-- 年度目標入力 -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px">🎯 年度目標（万円）</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="salesTargetInputs"></div>
+      </div>
+      <!-- ユニット2 -->
+      <div style="font-size:11px;font-weight:700;color:#185FA5;margin-bottom:6px">📊 ユニット2</div>
+      <div class="ot-grid" id="salesU2Grid"></div>
+      <!-- ユニット3 -->
+      <div style="font-size:11px;font-weight:700;color:#854F0B;margin-bottom:6px;margin-top:10px">📊 ユニット3</div>
+      <div class="ot-grid" id="salesU3Grid"></div>
+      <!-- 合計サマリー -->
+      <div class="ot-summary-bar" style="margin-top:8px">
+        <div class="ot-sum-item">ユニット2 合計: <strong id="salesU2Total" style="color:#185FA5">— 万円</strong></div>
+        <div class="ot-sum-item">ユニット3 合計: <strong id="salesU3Total" style="color:#854F0B">— 万円</strong></div>
+        <div class="ot-sum-item">合算 合計: <strong id="salesTotalAll" style="color:#0f172a">— 万円</strong></div>
       </div>
     </div>
 
@@ -675,7 +739,21 @@ const GAS_KEY       = 'kankyoka_gas_url';
 // 全デバイスで自動接続（localStorage未設定の端末も自動でGASに繋がる）
 const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwKYdjPlgVScVP5vM6tuRhnBdk9fn64yiEXWwy04l48C9RNCkZKvBboFzMbmQlqFxdT0A/exec';
 function mkInitActual(){ return {'2026':new Array(12).fill(null),'2027':new Array(12).fill(null),'2028':new Array(12).fill(null)}; }
+function mkInitSales(){ return {
+  '2025':{ unit2:new Array(12).fill(null), unit3:new Array(12).fill(null) },
+  '2026':{ unit2:new Array(12).fill(null), unit3:new Array(12).fill(null) },
+  '2027':{ unit2:new Array(12).fill(null), unit3:new Array(12).fill(null) },
+  '2028':{ unit2:new Array(12).fill(null), unit3:new Array(12).fill(null) },
+}; }
 let actualData = mkInitActual();
+let salesData  = mkInitSales();
+function mkInitTargets(){ return {
+  '2025':{ unit2:null, unit3:null, total:null },
+  '2026':{ unit2:null, unit3:null, total:null },
+  '2027':{ unit2:null, unit3:null, total:null },
+  '2028':{ unit2:null, unit3:null, total:null },
+}; }
+let salesTargets = mkInitTargets();
 let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
 let groups     = [];
 let gasUrl     = '';
@@ -690,7 +768,7 @@ function setSaveStatus(s){
 
 // ① データ保存（localStorage即時 + GAS遅延2秒デバウンス）
 function saveData(){
-  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups})); }catch(e){}
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups,salesData,salesTargets})); }catch(e){}
   setSaveStatus('local');
   if(!gasUrl){ return; }
   clearTimeout(saveTimer);
@@ -701,7 +779,7 @@ async function saveToGAS(){
   if(!gasUrl) return;
   setSaveStatus('saving');
   try{
-    const body=JSON.stringify({actualData,members,groups});
+    const body=JSON.stringify({actualData,members,groups,salesData,salesTargets});
     const res=await fetch(gasUrl,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
     const json=await res.json();
     if(json.error) throw new Error(json.error);
@@ -720,6 +798,27 @@ function applyData(d){
   if(d.members&&Array.isArray(d.members))
     members=d.members.map(m=>({...m,takenMonths:m.takenMonths||new Array(12).fill(0),group:m.group||''}));
   if(d.groups&&Array.isArray(d.groups)) groups=d.groups;
+  if(d.salesData){
+    const sy=mkInitSales();
+    ['2025','2026','2027','2028'].forEach(k=>{
+      if(d.salesData[k]){
+        if(d.salesData[k].unit2) sy[k].unit2=d.salesData[k].unit2;
+        if(d.salesData[k].unit3) sy[k].unit3=d.salesData[k].unit3;
+      }
+    });
+    salesData=sy;
+  }
+  if(d.salesTargets){
+    const st=mkInitTargets();
+    ['2025','2026','2027','2028'].forEach(k=>{
+      if(d.salesTargets[k]){
+        st[k].unit2 = d.salesTargets[k].unit2 ?? null;
+        st[k].unit3 = d.salesTargets[k].unit3 ?? null;
+        st[k].total = d.salesTargets[k].total ?? null;
+      }
+    });
+    salesTargets=st;
+  }
 }
 
 // 初期読込（GAS優先 → localStorage fallback）
@@ -749,7 +848,8 @@ async function loadData(){
 }
 
 function doReset(){
-  actualData=mkInitActual(); members=INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]})); groups=[];
+  actualData=mkInitActual(); salesData=mkInitSales(); salesTargets=mkInitTargets();
+  members=INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]})); groups=[];
   saveData(); closeModal(); renderAll();
 }
 function confirmReset(){ document.getElementById("resetModal").classList.add("open"); }
@@ -817,8 +917,9 @@ function switchSection(id,btn){
   document.getElementById(id+"Section").classList.add("active");
   btn.classList.add("active");
   if(id==="input"){
-    syncInputYearTab(); // ⑦ 当年度タブを自動選択
-    renderGroupUI(); renderOTInputGrid(); renderInputTable();
+    syncInputYearTab();
+    syncSalesInputYearTab(); // 売上タブも当年度に自動選択
+    renderGroupUI(); renderOTInputGrid(); renderInputTable(); renderSalesInputGrid();
   }
 }
 /* ⑦ 入力タブの年度ボタンを当年度に合わせる */
@@ -826,6 +927,16 @@ function syncInputYearTab(){
   document.querySelectorAll(".year-input-tab").forEach(b=>b.classList.remove("active"));
   const tab=document.getElementById("itab"+inputYear);
   if(tab) tab.classList.add("active");
+}
+/* ⑦ 売上入力タブも当年度に自動選択 */
+function syncSalesInputYearTab(){
+  document.querySelectorAll('.year-input-tab[id^="stab"]').forEach(b=>b.classList.remove('active'));
+  // FISCAL_YEARが2025〜2028の範囲なら当年度、範囲外は最新年度
+  const yr = ['2025','2026','2027','2028'].includes(String(FISCAL_YEAR))
+    ? String(FISCAL_YEAR) : '2028';
+  salesInputYear = yr;
+  const tab = document.getElementById('stab'+yr);
+  if(tab) tab.classList.add('active');
 }
 
 /* ═══ ① KPI（トレンド矢印付き） ═══ */
@@ -865,11 +976,12 @@ function renderKPI(){
 
   const achvColor = avgAchv>=80?"#085041":avgAchv>=50?"#854F0B":"#A32D2D";
   const kpiCls    = avgAchv>=80?"ok":avgAchv>=50?"":"danger";
+  // ② 並び順: 2025残業合計 → 当年度残業実績 → 有休取得率 → メンバー数
   const items = [
-    {label:"メンバー数",          val:members.length,  unit:"名",  sub:"有休付与合計: "+sumArr(members.map(m=>m.days))+"日",  color:"#0f172a", cls:"",      trend:""},
-    {label:"2025年度 残業合計",   val:f(total25,0),    unit:"h",   sub:"4月〜3月（12ヶ月）",                                  color:"#c2410c", cls:"",      trend:""},
-    {label:"有休取得率（全体）",  val:avgAchv,          unit:"%",   sub:"取得: "+totalTaken+"日 / 付与: "+totalDays+"日",      color:achvColor, cls:kpiCls,  trend:achvTrendHTML()},
-    {label:"2026年度 残業実績",   val:f(act26sum,0),   unit:"h",   sub:"目標対比: "+otAchv+"（"+valid26.length+"ヶ月入力）",  color:"#185FA5", cls:"",      trend:otTrendHTML()+otVsTargetHTML()},
+    {label:"2025年度 残業合計",  val:f(total25,0),   unit:"h",  sub:"4月〜3月（12ヶ月）基準値",                                color:"#c2410c", cls:"",     trend:""},
+    {label:"当年度 残業実績",    val:f(act26sum,0),  unit:"h",  sub:"目標対比: "+otAchv+"（"+valid26.length+"ヶ月入力）",      color:"#185FA5", cls:"",     trend:otTrendHTML()+otVsTargetHTML()},
+    {label:"有休取得率（全体）", val:avgAchv,         unit:"%",  sub:"取得: "+totalTaken+"日 / 付与: "+totalDays+"日",         color:achvColor, cls:kpiCls, trend:achvTrendHTML()},
+    {label:"メンバー数",         val:members.length,  unit:"名", sub:"有休付与合計: "+sumArr(members.map(m=>m.days))+"日",    color:"#0f172a", cls:"",     trend:""},
   ];
   document.getElementById("kpiGrid").innerHTML=items.map(k=>`
     <div class="kpi ${k.cls}">
@@ -1618,13 +1730,324 @@ window.addEventListener("afterprint",()=>{
 });
 
 /* ═══ 初期化 ═══ */
+/* ═══════════ 売上データ ═══════════ */
+const SALES_YEARS = ['2025','2026','2027','2028'];
+const U2_COLOR  = '#185FA5';
+const U3_COLOR  = '#854F0B';
+const TOT_COLOR = '#0F6E56';
+let selSalesYear    = DEFAULT_YEAR; // グラフ表示年度
+let salesInputYear  = DEFAULT_YEAR; // 入力タブ年度
+let salesChartInst  = null;
+
+/* ── 売上KPI ── */
+function renderSalesKPI(){
+  const yr  = selSalesYear;
+  const py  = String(parseInt(yr)-1);
+  const mi  = FISCAL_IDX;
+  const u2c = salesData[yr]?.unit2?.[mi] ?? null;
+  const u3c = salesData[yr]?.unit3?.[mi] ?? null;
+  const u2p = salesData[py]?.unit2?.[mi] ?? null;
+  const u3p = salesData[py]?.unit3?.[mi] ?? null;
+  const yoyBadge=(cur,prev)=>{
+    if(cur==null) return '';
+    if(prev==null||prev===0) return '';
+    const pct=((cur-prev)/prev*100).toFixed(1);
+    const up=parseFloat(pct)>=0;
+    return `<div class="kpi-trend ${up?'up-good':'dn-bad'}">${up?'▲':'▼'} 前年同月比 ${Math.abs(pct)}%</div>`;
+  };
+  const u2sum = sumArr(salesData[yr]?.unit2?.filter(v=>v!==null)||[]);
+  const u3sum = sumArr(salesData[yr]?.unit3?.filter(v=>v!==null)||[]);
+  document.getElementById('salesKpiGrid').innerHTML=[
+    {label:`ユニット2 当月（${MONTHS[mi]}）`,val:u2c!=null?u2c.toLocaleString():'—',unit:'万円',
+     sub:`${yr}年度累計: ${u2sum>0?u2sum.toLocaleString():'—'}万円`,color:U2_COLOR,trend:yoyBadge(u2c,u2p)},
+    {label:`ユニット3 当月（${MONTHS[mi]}）`,val:u3c!=null?u3c.toLocaleString():'—',unit:'万円',
+     sub:`${yr}年度累計: ${u3sum>0?u3sum.toLocaleString():'—'}万円`,color:U3_COLOR,trend:yoyBadge(u3c,u3p)},
+    {label:`合算 当月（${MONTHS[mi]}）`,
+     val:(u2c!=null&&u3c!=null)?(u2c+u3c).toLocaleString():'—',unit:'万円',
+     sub:`${yr}年度累計: ${(u2sum+u3sum)>0?(u2sum+u3sum).toLocaleString():'—'}万円`,color:TOT_COLOR,
+     trend:yoyBadge(u2c!=null&&u3c!=null?u2c+u3c:null,u2p!=null&&u3p!=null?u2p+u3p:null)},
+  ].map(k=>`<div class="kpi">
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-val" style="color:${k.color}">${k.val}<span class="kpi-unit">${k.unit}</span></div>
+    <div class="kpi-sub">${k.sub}</div>${k.trend}
+  </div>`).join('');
+}
+
+/* ── 売上グラフ年度ボタン ── */
+function renderSalesYearBtns(){
+  document.getElementById('salesYearBtns').innerHTML=
+    ['2026','2027','2028'].map(y=>`
+      <button class="yr-btn${y===selSalesYear?' active':''}"
+        ${y===selSalesYear?`style="background:${[U2_COLOR,'#7c3aed',U3_COLOR][['2026','2027','2028'].indexOf(y)]};border-color:transparent"`:''}
+        onclick="setSalesYear('${y}')">${y}年度</button>`).join('');
+}
+function setSalesYear(y){ selSalesYear=y; renderSalesYearBtns(); renderSalesChart(); renderSalesKPI(); renderSalesSummary(); }
+
+/* ── 売上グラフ ── */
+function renderSalesLegend(){
+  document.getElementById('salesLegend').innerHTML=`
+    <div class="legend-item"><span class="legend-sq" style="background:${U2_COLOR}"></span>ユニット2（${selSalesYear}年度）</div>
+    <div class="legend-item"><span class="legend-sq" style="background:${U3_COLOR}"></span>ユニット3（${selSalesYear}年度）</div>
+    <div class="legend-item"><span class="legend-dash" style="border-color:#475569"></span>2025年度合算（基準）</div>
+    <div class="legend-item"><span class="legend-line" style="background:#7c3aed"></span>累計（右軸）</div>
+    <div class="legend-item"><span class="legend-sq" style="background:#fef08a;border:1px solid #EAB308"></span>当月</div>`;
+}
+function renderSalesChart(){
+  const yr  = selSalesYear;
+  const s   = salesData[yr]   || {unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
+  const b   = salesData['2025']|| {unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
+  // 2025年度合算基準（折れ線）
+  const base2025 = b.unit2.map((v,i)=>(v!=null&&b.unit3[i]!=null)?v+b.unit3[i]:null);
+  // ① 累計ライン（Unit2+Unit3 入力済み月の running total）
+  let runTotal=0;
+  const cumLine = s.unit2.map((v,i)=>{
+    const u2=s.unit2[i], u3=s.unit3[i];
+    if(u2!=null&&u3!=null){ runTotal+=u2+u3; return runTotal; }
+    return null;
+  });
+  const tc = MONTHS.map((_,i)=>i===FISCAL_IDX?'#EAB308':'#64748b');
+  if(salesChartInst) salesChartInst.destroy();
+  salesChartInst=new Chart(document.getElementById('salesChart'),{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[
+      {type:'bar',  label:'ユニット2',  data:s.unit2,
+       backgroundColor:U2_COLOR+'CC',borderColor:U2_COLOR,borderWidth:1,
+       stack:'sales',borderRadius:{topLeft:0,topRight:0,bottomLeft:3,bottomRight:3}},
+      {type:'bar',  label:'ユニット3',  data:s.unit3,
+       backgroundColor:U3_COLOR+'CC',borderColor:U3_COLOR,borderWidth:1,
+       stack:'sales',borderRadius:{topLeft:3,topRight:3,bottomLeft:0,bottomRight:0}},
+      {type:'line', label:'2025年度合算（基準）', data:base2025,
+       borderColor:'#475569',backgroundColor:'transparent',
+       borderWidth:2,borderDash:[6,4],pointRadius:3,pointBackgroundColor:'#475569',
+       spanGaps:false,order:0,yAxisID:'y'},
+      // ① 累計ライン
+      {type:'line', label:'累計（合算）', data:cumLine,
+       borderColor:'#7c3aed',backgroundColor:'#7c3aed18',fill:true,
+       borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#7c3aed',
+       spanGaps:false,order:0,yAxisID:'y2'},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{
+          mode:'index',intersect:false,
+          callbacks:{
+            label:ctx=>{
+              const v=ctx.raw;
+              if(ctx.dataset.yAxisID==='y2')
+                return '累計: '+(v!=null?v.toLocaleString()+'万円':'—');
+              return ctx.dataset.label+': '+(v!=null?v.toLocaleString()+'万円':'—');
+            },
+            afterBody(items){
+              const bars=items.filter(it=>it.dataset.stack==='sales');
+              if(bars.length<2) return [];
+              const tot=bars.reduce((s,it)=>s+(it.raw??0),0);
+              return tot>0?['─────','当月合算: '+tot.toLocaleString()+'万円']:[];
+            }
+          }
+        }
+      },
+      scales:{
+        x:{stacked:true,ticks:{font:{size:10},color:tc,autoSkip:false,maxRotation:0,
+            callback:(val,i)=>i===FISCAL_IDX?'▼'+MONTHS[i]:MONTHS[i]},grid:{color:'#f1f5f9'}},
+        y:{stacked:true,beginAtZero:true,position:'left',
+           ticks:{font:{size:10},color:'#64748b',callback:v=>v+'万'},grid:{color:'#f1f5f9'}},
+        y2:{type:'linear',position:'right',beginAtZero:true,
+            ticks:{font:{size:10},color:'#7c3aed',callback:v=>v+'万'},
+            grid:{drawOnChartArea:false}}
+      }
+    },
+    plugins:[{id:'scb',beforeDraw(chart){
+      const{ctx,chartArea:{top,bottom},scales:{x}}=chart;
+      if(!x?.getPixelForTick) return;
+      const cx=x.getPixelForTick(FISCAL_IDX),step=x.getPixelForTick(1)-x.getPixelForTick(0);
+      ctx.save();ctx.fillStyle='rgba(250,240,100,0.18)';
+      ctx.fillRect(cx-step/2,top,step,bottom-top);ctx.restore();
+    }}]
+  });
+}
+
+function updateSalesTarget(unit, val){
+  if(!salesTargets[salesInputYear]) salesTargets[salesInputYear]={unit2:null,unit3:null,total:null};
+  salesTargets[salesInputYear][unit]=(val===''||val===null)?null:parseFloat(val);
+  saveData(); renderSalesSummary();
+}
+function renderSalesTargetInputs(){
+  const t=salesTargets[salesInputYear]||{unit2:null,unit3:null,total:null};
+  const fields=[
+    {key:'unit2',label:'ユニット2目標',color:U2_COLOR},
+    {key:'unit3',label:'ユニット3目標',color:U3_COLOR},
+    {key:'total',label:'合算目標',    color:TOT_COLOR},
+  ];
+  document.getElementById('salesTargetInputs').innerHTML=fields.map(f=>`
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <label style="font-size:10px;font-weight:600;color:${f.color}">${f.label}</label>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input type="number" min="0" step="1"
+          style="width:100%;padding:4px 7px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;text-align:right;${t[f.key]!=null?'background:#EAF3DE;border-color:#639922;font-weight:600':''}"
+          value="${t[f.key]??''}" placeholder="—"
+          oninput="updateSalesTarget('${f.key}',this.value)">
+        <span style="font-size:10px;color:#64748b;flex-shrink:0">万円</span>
+      </div>
+    </div>`).join('');
+}
+
+/* ── 年度サマリーテーブル（ダッシュボード） ── */
+function renderSalesSummary(){
+  const el=document.getElementById('salesSummary'); if(!el) return;
+  const yr=selSalesYear;
+  const py=String(parseInt(yr)-1);
+  const sd=salesData[yr]||{unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
+  const pd=salesData[py]||{unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
+  const tg=salesTargets[yr]||{unit2:null,unit3:null,total:null};
+
+  const u2act = sumArr(sd.unit2.filter(v=>v!==null));
+  const u3act = sumArr(sd.unit3.filter(v=>v!==null));
+  const ttact = u2act+u3act;
+  const u2py  = sumArr(pd.unit2.filter(v=>v!==null));
+  const u3py  = sumArr(pd.unit3.filter(v=>v!==null));
+  const ttpy  = u2py+u3py;
+
+  const rateColor=r=>r==null?'#64748b':r>=100?'#085041':r>=70?'#854F0B':'#A32D2D';
+  const rateBg   =r=>r==null?'':r>=100?'#dcfce7':r>=70?'#fef3c7':'#fee2e2';
+  const fmtRate  =r=>r==null?'—':r.toFixed(1)+'%';
+  const fmtYoy   =(act,prev)=>{
+    if(!act||!prev) return '—';
+    const d=((act-prev)/prev*100).toFixed(1);
+    return (parseFloat(d)>=0?'▲ +':'▼ ')+d+'%';
+  };
+  const yoyColor =(act,prev)=>{
+    if(!act||!prev) return '#64748b';
+    return act>=prev?'#085041':'#A32D2D';
+  };
+
+  const cols=[
+    {label:'ユニット2',color:U2_COLOR, tg:tg.unit2, act:u2act, py:u2py},
+    {label:'ユニット3',color:U3_COLOR, tg:tg.unit3, act:u3act, py:u3py},
+    {label:'合算',     color:TOT_COLOR,tg:tg.total, act:ttact, py:ttpy},
+  ];
+
+  const rows=[
+    {label:'年度目標',    fn:c=>c.tg!=null?c.tg.toLocaleString()+'万円':'未設定',color:c=>'#0f172a',bg:()=>''},
+    {label:'実績累計',    fn:c=>c.act>0?c.act.toLocaleString()+'万円':'—',       color:c=>c.color,  bg:()=>''},
+    {label:'達成率',      fn:c=>{const r=c.tg&&c.act?c.act/c.tg*100:null;return fmtRate(r);},
+      color:c=>{const r=c.tg&&c.act?c.act/c.tg*100:null;return rateColor(r);},
+      bg:c=>{const r=c.tg&&c.act?c.act/c.tg*100:null;return rateBg(r);}},
+    {label:'前年比',      fn:c=>fmtYoy(c.act,c.py),
+      color:c=>yoyColor(c.act,c.py), bg:()=>''},
+  ];
+
+  el.innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px;padding-top:8px;border-top:1px solid #f1f5f9">
+      ${yr}年度 売上サマリー
+    </div>
+    <!-- ③ 達成率ドーナツ -->
+    <div class="donut-row">
+      ${cols.map(c=>{
+        const r=c.tg&&c.act?Math.min(100,c.act/c.tg*100):null;
+        const pct=r!=null?r.toFixed(1):'—';
+        return `<div class="donut-item">
+          <div class="donut-wrap">
+            <canvas id="donut_${c.label.replace(/\s/g,'_')}" width="76" height="76"></canvas>
+            <div class="donut-overlay" style="color:${c.color}">${pct}${r!=null?'%':''}<br><span style="font-size:8px;color:#64748b">達成率</span></div>
+          </div>
+          <div style="font-size:10px;font-weight:700;color:${c.color};margin-top:4px">${c.label}</div>
+          <div style="font-size:9px;color:#94a3b8">${c.tg!=null?c.tg.toLocaleString()+'万円目標':'目標未設定'}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <!-- テーブル -->
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:320px">
+        <thead>
+          <tr style="border-bottom:2px solid #e2e8f0">
+            <th style="text-align:left;padding:5px 8px;font-size:10px;color:#64748b;font-weight:600">項目</th>
+            ${cols.map(c=>`<th style="text-align:right;padding:5px 8px;font-size:10px;color:${c.color};font-weight:700">${c.label}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r=>`<tr style="border-bottom:1px solid #f8fafc">
+            <td style="padding:5px 8px;color:#64748b;font-weight:600">${r.label}</td>
+            ${cols.map(c=>`<td style="padding:5px 8px;text-align:right;font-weight:700;color:${r.color(c)};background:${r.bg(c)};border-radius:4px">${r.fn(c)}</td>`).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  // ③ ドーナツ描画
+  cols.forEach(c=>{
+    const r=c.tg&&c.act?Math.min(100,c.act/c.tg*100):0;
+    const canvas=document.getElementById('donut_'+c.label.replace(/\s/g,'_'));
+    if(!canvas) return;
+    const old=Chart.getChart(canvas); if(old) old.destroy();
+    new Chart(canvas,{
+      type:'doughnut',
+      data:{datasets:[{
+        data:[r,Math.max(0,100-r)],
+        backgroundColor:[c.color+'DD','#e2e8f0'],
+        borderWidth:0
+      }]},
+      options:{cutout:'72%',animation:{duration:600},plugins:{legend:{display:false},tooltip:{enabled:false}}}
+    });
+  });
+}
+function setSalesInputYear(y,btn){
+  salesInputYear=y;
+  document.querySelectorAll('.year-input-tab[id^="stab"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSalesTargetInputs();
+  renderSalesInputGrid();
+}
+function renderSalesInputGrid(){
+  renderSalesTargetInputs();
+  ['unit2','unit3'].forEach(unit=>{
+    const gridId = unit==='unit2'?'salesU2Grid':'salesU3Grid';
+    document.getElementById(gridId).innerHTML=MONTHS.map((m,i)=>{
+      const v=salesData[salesInputYear]?.[unit]?.[i]??null;
+      const isCur=i===FISCAL_IDX&&salesInputYear===String(FISCAL_YEAR);
+      const cls=v!==null?'has-value':'';
+      return `<div class="ot-cell">
+        <label class="${isCur?'current-month-label':''}">${isCur?'▼':''}${m}</label>
+        <input type="number" class="ot-input ${cls}${isCur?' current-month-input':''}" min="0" step="1"
+          value="${v??''}" placeholder="—"
+          oninput="updateSales('${unit}',${i},this.value)">
+      </div>`;
+    }).join('');
+  });
+  updateSalesSummary();
+}
+function updateSales(unit,idx,val){
+  if(!salesData[salesInputYear]) salesData[salesInputYear]={unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
+  salesData[salesInputYear][unit][idx]=(val===''||val===null)?null:parseFloat(val);
+  const inp=document.querySelectorAll(`#sales${unit==='unit2'?'U2':'U3'}Grid .ot-input`)[idx];
+  if(inp){
+    inp.className='ot-input'+(idx===FISCAL_IDX&&salesInputYear===String(FISCAL_YEAR)?' current-month-input':'')
+      +' '+(salesData[salesInputYear][unit][idx]!==null?'has-value':'');
+  }
+  updateSalesSummary();
+  renderSalesChart(); renderSalesKPI();
+  saveData();
+}
+function updateSalesSummary(){
+  const yr=salesInputYear;
+  const u2=sumArr((salesData[yr]?.unit2||[]).filter(v=>v!==null));
+  const u3=sumArr((salesData[yr]?.unit3||[]).filter(v=>v!==null));
+  document.getElementById('salesU2Total').textContent=u2>0?u2.toLocaleString()+' 万円':'— 万円';
+  document.getElementById('salesU3Total').textContent=u3>0?u3.toLocaleString()+' 万円':'— 万円';
+  document.getElementById('salesTotalAll').textContent=(u2+u3)>0?(u2+u3).toLocaleString()+' 万円':'— 万円';
+}
+function clearSalesYear(){
+  salesData[salesInputYear]={unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
+  renderSalesInputGrid(); renderSalesChart(); renderSalesKPI(); saveData();
+}
+
 function renderAll(){
   renderTodayBadge(); renderKPI(); renderAlerts();
   renderYearBtns(); renderOTLegend(); renderOTChart(); renderProgress();
   renderMemberChart();
-  // PC: 埋め込みグラフを常時描画。モバイル: 展開時のみ
   if(window.innerWidth > 760) renderLeaveTrendEmbed();
   else if(leaveTrendOpen) renderLeaveTrendChart();
+  renderSalesYearBtns(); renderSalesLegend(); renderSalesChart(); renderSalesKPI(); renderSalesSummary();
   renderSummaryTable();
   updateGroupSelects();
 }
