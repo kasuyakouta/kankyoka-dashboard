@@ -1789,42 +1789,61 @@ function renderSalesLegend(){
     <div class="legend-item"><span class="legend-sq" style="background:${U2_COLOR}"></span>ユニット2（${selSalesYear}年度）</div>
     <div class="legend-item"><span class="legend-sq" style="background:${U3_COLOR}"></span>ユニット3（${selSalesYear}年度）</div>
     <div class="legend-item"><span class="legend-dash" style="border-color:#475569"></span>2025年度合算（基準）</div>
-    <div class="legend-item"><span class="legend-line" style="background:#7c3aed"></span>累計（右軸）</div>
     <div class="legend-item"><span class="legend-sq" style="background:#fef08a;border:1px solid #EAB308"></span>当月</div>`;
 }
 function renderSalesChart(){
   const yr  = selSalesYear;
   const s   = salesData[yr]   || {unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
   const b   = salesData['2025']|| {unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
-  // 2025年度合算基準（折れ線）
   const base2025 = b.unit2.map((v,i)=>(v!=null&&b.unit3[i]!=null)?v+b.unit3[i]:null);
-  // ① 累計ライン（Unit2+Unit3 入力済み月の running total）
-  let runTotal=0;
-  const cumLine = s.unit2.map((v,i)=>{
-    const u2=s.unit2[i], u3=s.unit3[i];
-    if(u2!=null&&u3!=null){ runTotal+=u2+u3; return runTotal; }
-    return null;
-  });
   const tc = MONTHS.map((_,i)=>i===FISCAL_IDX?'#EAB308':'#64748b');
   if(salesChartInst) salesChartInst.destroy();
+
+  // ② 棒グラフ内ラベル描画プラグイン
+  const barLabelPlugin = {
+    id:'barLabel',
+    afterDatasetsDraw(chart){
+      const{ctx,scales:{x,y}}=chart;
+      chart.data.datasets.forEach((ds,di)=>{
+        if(ds.type!=='bar'&&ds.stack!=='sales') return;
+        const meta=chart.getDatasetMeta(di);
+        meta.data.forEach((bar,i)=>{
+          const v=ds.data[i];
+          if(v==null||v===0) return;
+          const barH=Math.abs(bar.height||bar.base-bar.y);
+          const label=v>=10000?parseFloat((v/10000).toFixed(1))+'億':v.toLocaleString()+'万';
+          // フォントサイズをバー高さに合わせて動的計算（最小7px、最大11px）
+          const fs=Math.max(7,Math.min(11,Math.floor(barH*0.38)));
+          ctx.save();
+          ctx.font=`600 ${fs}px sans-serif`;
+          ctx.fillStyle='rgba(255,255,255,0.92)';
+          ctx.textAlign='center';
+          ctx.textBaseline='middle';
+          const midY=bar.y+(bar.base-bar.y)/2;
+          // テキスト幅がバー幅に収まる場合のみ描画
+          const tw=ctx.measureText(label).width;
+          if(tw<bar.width-6 && barH>fs+4){
+            ctx.fillText(label, bar.x, midY);
+          }
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   salesChartInst=new Chart(document.getElementById('salesChart'),{
     type:'bar',
     data:{labels:MONTHS,datasets:[
-      {type:'bar',  label:'ユニット2',  data:s.unit2,
+      {type:'bar',  label:'ユニット2', data:s.unit2,
        backgroundColor:U2_COLOR+'CC',borderColor:U2_COLOR,borderWidth:1,
        stack:'sales',borderRadius:{topLeft:0,topRight:0,bottomLeft:3,bottomRight:3}},
-      {type:'bar',  label:'ユニット3',  data:s.unit3,
+      {type:'bar',  label:'ユニット3', data:s.unit3,
        backgroundColor:U3_COLOR+'CC',borderColor:U3_COLOR,borderWidth:1,
        stack:'sales',borderRadius:{topLeft:3,topRight:3,bottomLeft:0,bottomRight:0}},
       {type:'line', label:'2025年度合算（基準）', data:base2025,
        borderColor:'#475569',backgroundColor:'transparent',
        borderWidth:2,borderDash:[6,4],pointRadius:3,pointBackgroundColor:'#475569',
-       spanGaps:false,order:0,yAxisID:'y'},
-      // ① 累計ライン
-      {type:'line', label:'累計（合算）', data:cumLine,
-       borderColor:'#7c3aed',backgroundColor:'#7c3aed18',fill:true,
-       borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#7c3aed',
-       spanGaps:false,order:0,yAxisID:'y2'},
+       spanGaps:false,order:0},
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
@@ -1834,8 +1853,6 @@ function renderSalesChart(){
           callbacks:{
             label:ctx=>{
               const v=ctx.raw;
-              if(ctx.dataset.yAxisID==='y2')
-                return '累計: '+(v!=null?fmtOku(v):'—');
               return ctx.dataset.label+': '+(v!=null?fmtOku(v):'—');
             },
             afterBody(items){
@@ -1850,14 +1867,11 @@ function renderSalesChart(){
       scales:{
         x:{stacked:true,ticks:{font:{size:10},color:tc,autoSkip:false,maxRotation:0,
             callback:(val,i)=>i===FISCAL_IDX?'▼'+MONTHS[i]:MONTHS[i]},grid:{color:'#f1f5f9'}},
-        y:{stacked:true,beginAtZero:true,position:'left',
-           ticks:{font:{size:10},color:'#64748b',callback:v=>v+'万'},grid:{color:'#f1f5f9'}},
-        y2:{type:'linear',position:'right',beginAtZero:true,
-            ticks:{font:{size:10},color:'#7c3aed',callback:v=>v+'万'},
-            grid:{drawOnChartArea:false}}
+        y:{stacked:true,beginAtZero:true,
+           ticks:{font:{size:10},color:'#64748b',callback:v=>v+'万'},grid:{color:'#f1f5f9'}}
       }
     },
-    plugins:[{id:'scb',beforeDraw(chart){
+    plugins:[barLabelPlugin,{id:'scb',beforeDraw(chart){
       const{ctx,chartArea:{top,bottom},scales:{x}}=chart;
       if(!x?.getPixelForTick) return;
       const cx=x.getPixelForTick(FISCAL_IDX),step=x.getPixelForTick(1)-x.getPixelForTick(0);
